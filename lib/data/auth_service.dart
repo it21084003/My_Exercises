@@ -1,67 +1,44 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:logger/logger.dart';
 
+// AuthService handles authentication functions for the app
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final Logger _logger = Logger();
+  final FirebaseAuth _auth = FirebaseAuth.instance; // Firebase authentication instance
 
-  // Sign In with Email & Password
+  // Function to log in a user with email and password
   Future<bool> login(String email, String password) async {
     try {
       await _auth.signInWithEmailAndPassword(email: email, password: password);
-      return true;
-    } catch (e) {
-      _logger.e("Login failed: $e");
-      return false;
+      return true; // Login successful
+    } on FirebaseAuthException catch (e) {
+      print("Login failed: ${e.message}"); // Print error for debugging
+      return false; // Login failed
     }
   }
 
-  // Register New User
+  // Function to register a new user with email and password
   Future<bool> register(String email, String password) async {
     try {
       await _auth.createUserWithEmailAndPassword(email: email, password: password);
-      return true;
+      return true; // Registration successful
     } catch (e) {
-      _logger.e("Registration failed: $e");
-      return false;
+      print("Registration failed: $e"); // Print error for debugging
+      return false; // Registration failed
     }
   }
 
-  // Password Reset
+  // Function to send a password reset email
   Future<bool> resetPassword(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
-      return true;
-    } catch (e) {
-      _logger.e("Password reset failed: $e");
-      return false;
+      return true; // Password reset email sent successfully
+    } on FirebaseAuthException catch (e) {
+      print("Password reset failed: ${e.message}"); // Print error for debugging
+      return false; // Password reset failed
     }
   }
 
-  // Logout user
+  // Function to log out the current user
   Future<void> logout() async {
     await _auth.signOut(); // Sign out from Firebase
-    await GoogleSignIn().signOut(); // Sign out from Google (if applicable)
-  }
-
-  // Google Sign-In
-  Future<bool> signInWithGoogle() async {
-    try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return false; // User canceled sign-in
-
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      await _auth.signInWithCredential(credential);
-      return true;
-    } catch (e) {
-      _logger.e("Google Sign-In failed: $e");
-      return false;
-    }
   }
 }

@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "783778456608",
+    "project_id": "myexercises-d4f5a",
+    "storage_bucket": "myexercises-d4f5a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:783778456608:android:096fe08c5907ac76ca0845",
+        "android_client_info": {
+          "package_name": "com.example.my_exercises"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "783778456608-ffjdihhdd1gf30bv73lpo03vt9b2jrba.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDY2PCud-qGGcDql-pMHbcp41eqwIdTkY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "783778456608-ffjdihhdd1gf30bv73lpo03vt9b2jrba.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "783778456608-ic2rt8pvmnf0r9nou52d09fgtfqf43ec.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.myExercises"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

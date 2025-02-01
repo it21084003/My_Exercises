@@ -3,42 +3,45 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'widgets/login_form.dart';
 import 'widgets/home_page.dart';
+import 'firebase_options.dart';
 
+// Entry point of the Flutter application
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized(); // Ensures Flutter is initialized before Firebase
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform); // Initializes Firebase
+  runApp(const MyApp()); // Runs the main application
 }
 
+// Root widget of the application
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'My App',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: const AuthWrapper(),
+      debugShowCheckedModeBanner: false, // Removes debug banner
+      title: 'My App', // Application title
+      theme: ThemeData(primarySwatch: Colors.blue), // Sets app theme
+      home: const AuthWrapper(), // Determines initial screen
     );
   }
 }
 
+// Widget to check user authentication status and navigate accordingly
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+      stream: FirebaseAuth.instance.authStateChanges(), // Listens for authentication state changes
       builder: (context, snapshot) {
-        // Check if the user is logged in
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator()); // Shows loading spinner while checking auth status
         } else if (snapshot.hasData) {
-          return const HomePage(); // If logged in, show HomePage
+          return const HomePage(); // Redirects to HomePage if user is logged in
         } else {
-          return const LoginForm(); // If not logged in, show LoginForm
+          return const LoginForm(); // Redirects to LoginForm if user is not logged in
         }
       },
     );
