@@ -21,11 +21,6 @@ class ResultPage extends StatelessWidget {
         score++;
       }
     }
-    for (int i = 0; i < questions.length; i++) {
-  print("Question ${i + 1}");
-  print("Selected Answer: ${selectedAnswers[i]}");
-  print("Correct Answer: ${questions[i].correctAnswer}");
-}
 
     return Scaffold(
       appBar: AppBar(
@@ -93,7 +88,7 @@ class ResultPage extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          for (var option in ['optionA', 'optionB', 'optionC', 'optionD'])
+                          for (var option in ['A', 'B', 'C', 'D'])
                             Padding(
                               padding: const EdgeInsets.symmetric(vertical: 4.0),
                               child: Row(

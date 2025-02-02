@@ -1,27 +1,27 @@
 class Question {
   final String questionText;
-  final String optionA;
-  final String optionB;
-  final String optionC;
-  final String optionD;
+  final String A;
+  final String B;
+  final String C;
+  final String D;
   final String correctAnswer;
 
   Question({
     required this.questionText,
-    required this.optionA,
-    required this.optionB,
-    required this.optionC,
-    required this.optionD,
+    required this.A,
+    required this.B,
+    required this.C,
+    required this.D,
     required this.correctAnswer,
   });
 
 factory Question.fromJson(Map<String, dynamic> json) {
   return Question(
     questionText: json['questionText'],
-    optionA: json['optionA'],
-    optionB: json['optionB'],
-    optionC: json['optionC'],
-    optionD: json['optionD'],
+    A: json['A'],
+    B: json['B'],
+    C: json['C'],
+    D: json['D'],
     correctAnswer: json['correctAnswer'],
   );
 }
@@ -29,10 +29,10 @@ factory Question.fromJson(Map<String, dynamic> json) {
   Map<String, dynamic> toJson() {
     return {
       'questionText': questionText,
-      'optionA': optionA,
-      'optionB': optionB,
-      'optionC': optionC,
-      'optionD': optionD,
+      'A': A,
+      'B': B,
+      'C': C,
+      'D': D,
       'correctAnswer': correctAnswer,
     };
   }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart'; // Import Cupertino widgets
+import 'package:flutter/cupertino.dart';
 import '../data/firestore_service.dart';
 import '../models/question_model.dart';
 import '../widgets/result_page.dart';
@@ -17,11 +17,29 @@ class _ExercisePageState extends State<ExercisePage> with AutomaticKeepAliveClie
   final FirestoreService _firestoreService = FirestoreService();
   late Future<List<Question>> _questionsFuture;
   final Map<int, String> _selectedAnswers = {};
+  String _exerciseTitle = "Loading..."; // Placeholder for exercise title
 
   @override
   void initState() {
     super.initState();
     _questionsFuture = _firestoreService.fetchExerciseQuestions(widget.exerciseNumber);
+    _fetchExerciseTitle(); // Fetch the title of the exercise
+  }
+
+  Future<void> _fetchExerciseTitle() async {
+    try {
+      final exercise = await _firestoreService.getExerciseById(widget.exerciseNumber);
+      if (exercise != null) {
+        setState(() {
+          _exerciseTitle = exercise['title'] ?? "Untitled Exercise";
+        });
+      }
+    } catch (e) {
+      print("Error fetching exercise title: $e");
+      setState(() {
+        _exerciseTitle = "Error loading title";
+      });
+    }
   }
 
   @override
@@ -32,16 +50,16 @@ class _ExercisePageState extends State<ExercisePage> with AutomaticKeepAliveClie
         leading: IconButton(
           icon: const Icon(Icons.cancel),
           onPressed: () {
-            _showCancelConfirmationDialog(context); // Show confirmation dialog
+            _showCancelConfirmationDialog(context);
           },
         ),
-        title: Text('Exercise ${widget.exerciseNumber}'),
+        title: Text(_exerciseTitle), // Updated to show the exercise title
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: GestureDetector(
               onTap: () {
-                _showFinishConfirmationDialog(context); // Show Finish confirmation dialog
+                _showFinishConfirmationDialog(context);
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -106,7 +124,7 @@ class _ExercisePageState extends State<ExercisePage> with AutomaticKeepAliveClie
                         ),
                       ),
                       const SizedBox(height: 16),
-                      for (var option in ['optionA', 'optionB', 'optionC', 'optionD'])
+                      for (var option in ['A', 'B', 'C', 'D'])
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4.0),
                           child: Row(
@@ -150,16 +168,16 @@ class _ExercisePageState extends State<ExercisePage> with AutomaticKeepAliveClie
         actions: [
           CupertinoDialogAction(
             onPressed: () {
-              Navigator.of(context).pop(); // Close the dialog
+              Navigator.of(context).pop();
             },
             child: const Text('No'),
           ),
           CupertinoDialogAction(
             onPressed: () {
-              Navigator.of(context).pop(); // Close the dialog
-              Navigator.pop(context); // Navigate back
+              Navigator.of(context).pop();
+              Navigator.pop(context);
             },
-            isDestructiveAction: true, // Red text for destructive action
+            isDestructiveAction: true,
             child: const Text('Yes'),
           ),
         ],
@@ -176,14 +194,14 @@ class _ExercisePageState extends State<ExercisePage> with AutomaticKeepAliveClie
         actions: [
           CupertinoDialogAction(
             onPressed: () {
-              Navigator.of(context).pop(); // Close the dialog
+              Navigator.of(context).pop();
             },
             child: const Text('No'),
           ),
           CupertinoDialogAction(
             onPressed: () {
-              Navigator.of(context).pop(); // Close the dialog
-              _navigateToResultPage(context); // Navigate to result page
+              Navigator.of(context).pop();
+              _navigateToResultPage(context);
             },
             child: const Text('Yes'),
           ),

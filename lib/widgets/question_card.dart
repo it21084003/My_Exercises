@@ -45,7 +45,7 @@ class _QuestionCardState extends State<QuestionCard> {
             // Options
             Column(
               children: [
-                for (var option in ['optionA', 'optionB', 'optionC', 'optionD'])
+                for (var option in ['A', 'B', 'C', 'D'])
                   Container(
                     margin: const EdgeInsets.symmetric(vertical: 8.0),
                     child: Row(

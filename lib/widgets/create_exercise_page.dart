@@ -49,22 +49,13 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
       return;
     }
 
-    final answerMapping = {
-      'A': 'optionA',
-      'B': 'optionB',
-      'C': 'optionC',
-      'D': 'optionD',
-    };
-
-    final formattedAnswer = answerMapping[_correctAnswerController.text];
-
     _questions.add({
       'questionText': _questionTextController.text,
-      'optionA': _optionAController.text,
-      'optionB': _optionBController.text,
-      'optionC': _optionCController.text,
-      'optionD': _optionDController.text,
-      'correctAnswer': formattedAnswer,
+      'A': _optionAController.text,
+      'B': _optionBController.text,
+      'C': _optionCController.text,
+      'D': _optionDController.text,
+      'correctAnswer': correctAnswer,
     });
 
     _questionTextController.clear();
@@ -97,7 +88,7 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
       final exerciseDoc = await _firestore.collection('exercises').add({
         'title': _titleController.text,
         'creator': user.email,
-        'shared': _isShared, // Use the shared status from the toggle
+        'shared': _isShared,
         'timestamp': Timestamp.now(),
       });
 
@@ -110,7 +101,7 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
         const SnackBar(content: Text('Exercise created successfully!')),
       );
 
-      Navigator.pop(context);
+      Navigator.pop(context, true); // Pass "true" to indicate success
     } catch (e) {
       print('Error saving exercise: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -183,7 +174,7 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
             TextField(
               controller: _correctAnswerController,
               decoration: const InputDecoration(
-                  labelText: 'Correct Answer (e.g., optionA)'),
+                  labelText: 'Correct Answer (e.g., A)'),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
@@ -196,7 +187,7 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
             ..._questions.map((q) => ListTile(
                   title: Text(q['questionText']),
                   subtitle: Text(
-                      'A: ${q['optionA']}, B: ${q['optionB']}, C: ${q['optionC']}, D: ${q['optionD']}'),
+                      'A: ${q['A']}, B: ${q['B']}, C: ${q['C']}, D: ${q['D']}'),
                 )),
           ],
         ),

@@ -20,12 +20,6 @@ class _HomePageState extends State<HomePage> {
     ProfileScreen(),
   ];
 
-  final List<String> _titles = const [
-    'Home',
-    'My Exercises',
-    'Profile',
-  ];
-
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -35,25 +29,11 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_titles[_selectedIndex]),
-        centerTitle: true,
-        actions: [
-          if (_selectedIndex == 1) // Show Add Icon only for My Exercises page
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const CreateExercisePage(),
-                  ),
-                );
-              },
-            ),
-        ],
+      body: SafeArea(
+        
+        child:
+            _pages[_selectedIndex], // Ensure content respects system UI areas
       ),
-      body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         items: const [
           BottomNavigationBarItem(
