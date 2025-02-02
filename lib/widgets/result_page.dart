@@ -1,0 +1,142 @@
+import 'package:flutter/material.dart';
+import '../models/question_model.dart';
+
+class ResultPage extends StatelessWidget {
+  final List<Question> questions;
+  final Map<int, String> selectedAnswers;
+
+  const ResultPage({
+    super.key,
+    required this.questions,
+    required this.selectedAnswers,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    int score = 0;
+
+    // Calculate score
+    for (int i = 0; i < questions.length; i++) {
+      if (selectedAnswers[i]?.trim() == questions[i].correctAnswer.trim()) {
+        score++;
+      }
+    }
+    for (int i = 0; i < questions.length; i++) {
+  print("Question ${i + 1}");
+  print("Selected Answer: ${selectedAnswers[i]}");
+  print("Correct Answer: ${questions[i].correctAnswer}");
+}
+
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false, // Removes the back button
+        title: const Text('Results'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red, // Background color for Exit
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20.0),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 5.0), // Vertical padding added
+              ),
+              onPressed: () {
+                Navigator.popUntil(context, (route) => route.isFirst); // Exit to home
+              },
+              child: const Text(
+                'Exit',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Your Score: $score / ${questions.length}',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Expanded(
+              child: ListView.builder(
+                itemCount: questions.length,
+                itemBuilder: (context, index) {
+                  final question = questions[index];
+                  final selectedAnswer = selectedAnswers[index];
+                  final correctAnswer = question.correctAnswer;
+
+                  return Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16.0),
+                    ),
+                    margin: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Q${index + 1}: ${question.questionText}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          for (var option in ['optionA', 'optionB', 'optionC', 'optionD'])
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4.0),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    option == correctAnswer
+                                        ? Icons.check_circle
+                                        : (option == selectedAnswer && option != correctAnswer)
+                                            ? Icons.cancel
+                                            : Icons.circle_outlined,
+                                    color: option == correctAnswer
+                                        ? Colors.green
+                                        : (option == selectedAnswer && option != correctAnswer)
+                                            ? Colors.red
+                                            : Colors.grey,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      question.toJson()[option]!,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: option == correctAnswer
+                                            ? Colors.green
+                                            : (option == selectedAnswer && option != correctAnswer)
+                                                ? Colors.red
+                                                : Colors.black,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

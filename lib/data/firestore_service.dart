@@ -1,43 +1,70 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/question.dart';
+import 'package:my_exercises/models/question_model.dart';
+import 'auth_service.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Fetch questions by exercise number
-  Future<List<Question>> fetchQuestions(int exerciseId) async {
+  // Fetch shared exercises
+  Future<List<Map<String, dynamic>>> fetchSharedExercises() async {
     try {
       QuerySnapshot querySnapshot = await _firestore
-          .collection('questions')
-          .where('exerciseId', isEqualTo: exerciseId) // Filter by exerciseId
+          .collection('exercises')
+          .where('shared', isEqualTo: true)
           .get();
 
       return querySnapshot.docs.map((doc) {
-        return Question.fromFirestore(doc.data() as Map<String, dynamic>, doc.id);
+        return {
+          'exerciseId': doc.id, // Use document ID as exerciseId
+          ...doc.data() as Map<String, dynamic>, // Merge document data
+        };
       }).toList();
     } catch (e) {
-      print("❌ Error fetching questions: $e");
+      print('Error fetching shared exercises: $e');
       return [];
     }
   }
 
-  // Function to add a question to Firestore
-  Future<void> addQuestion(Question question) async {
-    try {
-      await _firestore.collection('questions').add(question.toJson());
-      print("✅ Question added successfully!");
-    } catch (e) {
-      print("❌ Error adding question: $e");
-    }
-  }
+  // Fetch questions for a specific exercise
+  Future<List<Question>> fetchExerciseQuestions(String exerciseId) async {
+  try {
+    QuerySnapshot querySnapshot = await _firestore
+        .collection('exercises')
+        .doc(exerciseId)
+        .collection('questions')
+        .get();
 
-  // Function to delete a question from Firestore
-  Future<void> deleteQuestion(String questionId) async {
+    return querySnapshot.docs.map((doc) {
+      return Question.fromJson(doc.data() as Map<String, dynamic>);
+    }).toList();
+  } catch (e) {
+    print('Error fetching exercise questions: $e');
+    return [];
+  }
+}
+
+  // Fetch user-specific exercises
+  Future<List<Map<String, dynamic>>> fetchUserExercises() async {
     try {
-      await _firestore.collection('questions').doc(questionId).delete();
-      print("✅ Question deleted successfully!");
+      final currentUser = AuthService().currentUser;
+      if (currentUser == null) {
+        throw Exception("No user is logged in.");
+      }
+
+      QuerySnapshot querySnapshot = await _firestore
+          .collection('exercises')
+          .where('creator', isEqualTo: currentUser.email)
+          .get();
+
+      return querySnapshot.docs.map((doc) {
+        return {
+          'exerciseId': doc.id, // Use document ID as exerciseId
+          ...doc.data() as Map<String, dynamic>, // Merge document data
+        };
+      }).toList();
     } catch (e) {
-      print("❌ Error deleting question: $e");
+      print('Error fetching user exercises: $e');
+      return [];
     }
   }
 }

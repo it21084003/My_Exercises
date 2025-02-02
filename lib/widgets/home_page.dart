@@ -1,27 +1,31 @@
 import 'package:flutter/material.dart';
-import '../data/auth_service.dart';
-import 'exercise_page.dart';
+import 'package:my_exercises/widgets/create_exercise_page.dart';
+import 'home_screen.dart';
+import 'my_exercises_page.dart';
+import 'profile_screen.dart';
 
-// HomePage widget with bottom navigation bar
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  HomePageState createState() => HomePageState();
+  State<HomePage> createState() => _HomePageState();
 }
 
-class HomePageState extends State<HomePage> {
-  int _selectedIndex = 0; // Index for navigation bar
+class _HomePageState extends State<HomePage> {
+  int _selectedIndex = 0;
 
-  // Function to navigate to an exercise page
-  void _navigateToExercise(int exerciseNumber) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => ExercisePage(exerciseNumber: exerciseNumber)),
-    );
-  }
+  final List<Widget> _pages = const [
+    HomeScreen(),
+    MyExercisesPage(),
+    ProfileScreen(),
+  ];
 
-  // Function to handle navigation bar tap
+  final List<String> _titles = const [
+    'Home',
+    'My Exercises',
+    'Profile',
+  ];
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -30,57 +34,35 @@ class HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final AuthService _authService = AuthService(); // Initialize AuthService for handling logout
-
-    // List of pages for navigation
-    final List<Widget> pages = <Widget>[
-      ListView(
-        padding: const EdgeInsets.all(16.0),
-        children: [
-          ListTile(
-            title: const Text('Exercise 1'),
-            onTap: () => _navigateToExercise(1),
-          ),
-          const Divider(),
-          ListTile(
-            title: const Text('Exercise 2'),
-            onTap: () => _navigateToExercise(2),
-          ),
-          const Divider(),
-          ListTile(
-            title: const Text('Exercise 3'),
-            onTap: () => _navigateToExercise(3),
-          ),
-        ],
-      ),
-      const Center(child: Text('My Page')), // My Page
-      const Center(child: Text('Profile Page')), // Profile Page
-    ];
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Home Page'), // Title displayed in the AppBar
+        title: Text(_titles[_selectedIndex]),
+        centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout), // Logout icon button
-            onPressed: () async {
-              await _authService.logout();
-              if (!mounted) return;
-              Navigator.pushReplacementNamed(context, '/'); // Redirect to login screen after logout
-            },
-          ),
+          if (_selectedIndex == 1) // Show Add Icon only for My Exercises page
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CreateExercisePage(),
+                  ),
+                );
+              },
+            ),
         ],
       ),
-      body: pages[_selectedIndex], // Display selected page
+      body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
+        items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.category),
-            label: 'My',
+            icon: Icon(Icons.book),
+            label: 'My Exercises',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
@@ -88,7 +70,6 @@ class HomePageState extends State<HomePage> {
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blue,
         onTap: _onItemTapped,
       ),
     );
