@@ -307,12 +307,19 @@ class _EditExercisePageState extends State<EditExercisePage> {
               return ExpansionTile(
                 title: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+
                   children: [
-                    Text(
-                      question['questionText'],
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Text(
+                        question['questionText'],
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+
+                          overflow: TextOverflow.ellipsis, // Prevent overflow by truncating text
+                          maxLines: 1, // Limit to one line
                       ),
                     ),
                     IconButton(

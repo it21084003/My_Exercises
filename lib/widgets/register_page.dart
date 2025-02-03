@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data/auth_service.dart';
 
-// RegisterPage widget for new user sign-up
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -10,17 +9,19 @@ class RegisterPage extends StatefulWidget {
 }
 
 class RegisterPageState extends State<RegisterPage> {
-  final _formKey = GlobalKey<FormState>(); // Form key for validation
-  final TextEditingController _emailController = TextEditingController(); // Controller for email input
-  final TextEditingController _passwordController = TextEditingController(); // Controller for password input
-  final AuthService _authService = AuthService(); // Authentication service instance
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
 
+  String? _nameError;
   String? _emailError;
   String? _passwordError;
 
-  // Function to handle user registration
   void _register() async {
     setState(() {
+      _nameError = null;
       _emailError = null;
       _passwordError = null;
     });
@@ -29,13 +30,16 @@ class RegisterPageState extends State<RegisterPage> {
       bool success = await _authService.register(
         _emailController.text,
         _passwordController.text,
+        _nameController.text, // Pass user name
       );
+
       if (!mounted) return;
+
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registration successful! Please log in.')), // Success message
+          const SnackBar(content: Text('Registration successful! Please log in.')),
         );
-        Navigator.pop(context); // Navigate back to login page
+        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
       } else {
         setState(() {
           _emailError = 'Email is already in use or invalid';
@@ -48,7 +52,7 @@ class RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Register')), // AppBar with title
+      appBar: AppBar(title: const Text('Register')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -56,7 +60,23 @@ class RegisterPageState extends State<RegisterPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Email input field
+              // User name input
+              TextFormField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  labelText: 'Name',
+                  border: OutlineInputBorder(),
+                  errorText: _nameError,
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              // Email input
               TextFormField(
                 controller: _emailController,
                 decoration: InputDecoration(
@@ -66,13 +86,13 @@ class RegisterPageState extends State<RegisterPage> {
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter your email'; // Validation for empty email
+                    return 'Please enter your email';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 16),
-              // Password input field
+              // Password input
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
@@ -83,13 +103,12 @@ class RegisterPageState extends State<RegisterPage> {
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter your password'; // Validation for empty password
+                    return 'Please enter your password';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 20),
-              // Register button
               SizedBox(
                 width: double.infinity,
                 height: 50,

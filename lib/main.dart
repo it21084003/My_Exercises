@@ -23,6 +23,10 @@ class MyApp extends StatelessWidget {
       title: 'My App', // Application title
       theme: ThemeData(primarySwatch: Colors.blue), // Sets app theme
       home: const AuthWrapper(), // Determines initial screen
+      routes: {
+        '/login': (context) => const LoginForm(), // Login page route
+        '/home': (context) => const HomePage(), // Home page route
+      },
     );
   }
 }

@@ -1,10 +1,19 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance; // Firebase Authentication instance
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance; // Firestore instance
+  final FirebaseStorage _storage = FirebaseStorage.instance; // Firebase Storage instance
+
+  // Getter to access Firebase Firestore
+  FirebaseFirestore get firestore => _firestore;
 
   // Getter to get the currently logged-in user
   User? get currentUser => _auth.currentUser;
+
 
   // Function to log in a user with email and password
   Future<bool> login(String email, String password) async {
@@ -17,14 +26,44 @@ class AuthService {
     }
   }
 
-  // Function to register a new user with email and password
-  Future<bool> register(String email, String password) async {
+  // Function to register a new user with email, password, and username
+  Future<bool> register(String email, String password, String userName) async {
     try {
-      await _auth.createUserWithEmailAndPassword(email: email, password: password);
-      return true; // Registration successful
+      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      User? user = userCredential.user;
+
+      if (user != null) {
+        // Update display name in Firebase Authentication
+        await user.updateDisplayName(userName);
+
+        // Save user details in Firestore
+        await _firestore.collection('users').doc(user.uid).set({
+          'uid': user.uid,
+          'email': email,
+          'userName': userName,
+          'profilePicture': null, // Placeholder for profile picture
+        });
+        return true;
+      }
+      return false;
     } catch (e) {
-      print("Registration failed: $e");
-      return false; // Registration failed
+      print('Error during registration: $e');
+      return false;
+    }
+  }
+
+  // Function to upload profile picture to Firebase Storage
+  Future<String?> uploadProfilePicture(String uid, String filePath) async {
+    try {
+      final ref = _storage.ref().child('profile_pictures/$uid.jpg');
+      await ref.putFile(File(filePath));
+      return await ref.getDownloadURL(); // Return download URL
+    } catch (e) {
+      print('Error uploading profile picture: $e');
+      return null;
     }
   }
 
