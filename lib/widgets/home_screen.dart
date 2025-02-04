@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data/firestore_service.dart';
 import '../screens/exercise_page.dart';
+import 'search_page.dart'; // Import the new search page
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,6 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
+          // Top row with title and search icon
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -25,12 +27,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 "Home",
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
+              IconButton(
+                icon: const Icon(Icons.search, size: 26),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SearchPage()),
+                  );
+                },
+              ),
             ],
           ),
-          const SizedBox(height: 16), // Add spacing between title and list
+          const SizedBox(height: 16),
+
+          // Fetch and display shared exercises
           Expanded(
             child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: _firestoreService.fetchSharedExercises(), // Fetch shared exercises
+              future: _firestoreService.fetchSharedExercises(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -49,8 +62,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.red,
-                        decoration: TextDecoration.underline,
-                        decorationColor: Colors.yellow,
                       ),
                     ),
                   );
@@ -72,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           exercise['title'] ?? 'Untitled Exercise',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        subtitle: Text('Created by: ${exercise['creator'] ?? 'Unknown'}'),
+                        subtitle: Text('Created by: ${exercise['username'] ?? 'Unknown'}'),
                         onTap: () {
                           if (exercise['exerciseId'] == null) {
                             ScaffoldMessenger.of(context).showSnackBar(

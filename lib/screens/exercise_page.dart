@@ -17,13 +17,13 @@ class _ExercisePageState extends State<ExercisePage> with AutomaticKeepAliveClie
   final FirestoreService _firestoreService = FirestoreService();
   late Future<List<Question>> _questionsFuture;
   final Map<int, String> _selectedAnswers = {};
-  String _exerciseTitle = "Loading..."; // Placeholder for exercise title
+  String _exerciseTitle = "Loading...";
 
   @override
   void initState() {
     super.initState();
     _questionsFuture = _firestoreService.fetchExerciseQuestions(widget.exerciseNumber);
-    _fetchExerciseTitle(); // Fetch the title of the exercise
+    _fetchExerciseTitle();
   }
 
   Future<void> _fetchExerciseTitle() async {
@@ -32,6 +32,10 @@ class _ExercisePageState extends State<ExercisePage> with AutomaticKeepAliveClie
       if (exercise != null) {
         setState(() {
           _exerciseTitle = exercise['title'] ?? "Untitled Exercise";
+        });
+      } else {
+        setState(() {
+          _exerciseTitle = "Exercise Not Found";
         });
       }
     } catch (e) {
@@ -49,22 +53,18 @@ class _ExercisePageState extends State<ExercisePage> with AutomaticKeepAliveClie
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.cancel),
-          onPressed: () {
-            _showCancelConfirmationDialog(context);
-          },
+          onPressed: () => _showCancelConfirmationDialog(context),
         ),
-        title: Text(_exerciseTitle), // Updated to show the exercise title
+        title: Text(_exerciseTitle),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: GestureDetector(
-              onTap: () {
-                _showFinishConfirmationDialog(context);
-              },
+              onTap: () => _showFinishConfirmationDialog(context),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 decoration: BoxDecoration(
-                  color: Colors.blue, // Blue background
+                  color: Colors.blue,
                   borderRadius: BorderRadius.circular(20.0),
                 ),
                 child: const Text(
@@ -167,9 +167,7 @@ class _ExercisePageState extends State<ExercisePage> with AutomaticKeepAliveClie
         content: const Text('Are you sure you want to cancel this exercise? Your progress will be lost.'),
         actions: [
           CupertinoDialogAction(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
+            onPressed: () => Navigator.of(context).pop(),
             child: const Text('No'),
           ),
           CupertinoDialogAction(
@@ -193,9 +191,7 @@ class _ExercisePageState extends State<ExercisePage> with AutomaticKeepAliveClie
         content: const Text('Are you sure you want to finish the exercise and submit your answers?'),
         actions: [
           CupertinoDialogAction(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
+            onPressed: () => Navigator.of(context).pop(),
             child: const Text('No'),
           ),
           CupertinoDialogAction(

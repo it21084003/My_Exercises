@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:my_exercises/widgets/create_exercise_page.dart';
 import 'home_screen.dart';
 import 'my_exercises_page.dart';
 import 'profile_screen.dart';

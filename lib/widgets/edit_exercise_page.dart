@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class EditExercisePage extends StatefulWidget {
@@ -25,6 +25,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
 
   List<Map<String, dynamic>> _questions = [];
   List<Map<String, dynamic>> _newQuestions = [];
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
@@ -52,6 +53,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
             'C': doc['C'],
             'D': doc['D'],
             'correctAnswer': doc['correctAnswer'],
+            'expanded': false, // To control the initial expansion state
           };
         }).toList();
       });
@@ -60,22 +62,76 @@ class _EditExercisePageState extends State<EditExercisePage> {
     }
   }
 
+  Future<void> _deleteExercise() async {
+    bool confirmDelete = await showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('Delete Exercise'),
+        content: const Text(
+          'Are you sure you want to delete this exercise? This action cannot be undone.',
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.of(context).pop(false),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true, // Makes text red for delete
+            child: const Text('Delete'),
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmDelete != true) return;
+
+    try {
+      // Delete all questions associated with this exercise
+      QuerySnapshot questionSnapshot = await _firestore
+          .collection('exercises')
+          .doc(widget.exerciseId)
+          .collection('questions')
+          .get();
+
+      for (var doc in questionSnapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      // Delete the exercise itself
+      await _firestore.collection('exercises').doc(widget.exerciseId).delete();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Exercise deleted successfully!')),
+      );
+
+      Navigator.pop(context);
+    } catch (e) {
+      print('Error deleting exercise: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting exercise: $e')),
+      );
+    }
+  }
+
   Future<void> _updateExercise() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
     try {
       if (_titleController.text.isEmpty) {
-        showIOSToast(context, 'Exercise title cannot be empty!');
+        _showToast(context, 'Exercise title cannot be empty!');
         return;
       }
 
-      // Validate questions
       for (var question in [..._questions, ..._newQuestions]) {
         if (question['questionText'].isEmpty ||
             question['A'].isEmpty ||
             question['B'].isEmpty ||
             question['C'].isEmpty ||
-            question['D'].isEmpty ||
-            question['correctAnswer'].isEmpty) {
-          showIOSToast(context, 'Please fill all fields for every question.');
+            question['D'].isEmpty) {
+          _showToast(context, 'Please fill all fields for every question.');
           return;
         }
       }
@@ -97,7 +153,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
           'B': question['B'],
           'C': question['C'],
           'D': question['D'],
-          'correctAnswer': question['correctAnswer'],
+          'correctAnswer': question['correctAnswer'].toUpperCase(),
         });
       }
 
@@ -112,62 +168,47 @@ class _EditExercisePageState extends State<EditExercisePage> {
           'B': question['B'],
           'C': question['C'],
           'D': question['D'],
-          'correctAnswer': question['correctAnswer'],
+          'correctAnswer': question['correctAnswer'].toUpperCase(),
         });
       }
 
-      showIOSToast(context, 'Exercise updated successfully!');
+      _showToast(context, 'Exercise updated successfully!');
       Navigator.pop(context);
     } catch (e) {
       print('Error updating exercise: $e');
-      showIOSToast(context, 'Error updating exercise: $e');
+      _showToast(context, 'Error updating exercise: $e');
     }
   }
 
-  Future<void> _deleteExercise() async {
-    bool confirmDelete = await _showIOSDeleteDialog(
-      context,
-      'Delete Exercise',
-      'Are you sure you want to delete this exercise?',
+  Future<void> _deleteQuestion(Map<String, dynamic> question,
+      {bool isNew = false}) async {
+    bool confirmDelete = await showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('Delete Question'),
+        content: const Text(
+          'Are you sure you want to delete this question?',
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.of(context).pop(false),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true, // Makes text red for delete
+            child: const Text('Delete'),
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
+        ],
+      ),
     );
 
-    if (!confirmDelete) return;
-
-    try {
-      QuerySnapshot questionSnapshot = await _firestore
-          .collection('exercises')
-          .doc(widget.exerciseId)
-          .collection('questions')
-          .get();
-
-      for (var doc in questionSnapshot.docs) {
-        await doc.reference.delete();
-      }
-
-      await _firestore.collection('exercises').doc(widget.exerciseId).delete();
-
-      showIOSToast(context, 'Exercise deleted successfully!');
-      Navigator.pop(context);
-    } catch (e) {
-      print('Error deleting exercise: $e');
-      showIOSToast(context, 'Error deleting exercise: $e');
-    }
-  }
-
-  Future<void> _deleteQuestion(Map<String, dynamic> question, {bool isNew = false}) async {
-    bool confirmDelete = await _showIOSDeleteDialog(
-      context,
-      'Delete Question',
-      'Are you sure you want to delete this question?',
-    );
-
-    if (!confirmDelete) return;
+    if (confirmDelete != true) return;
 
     if (isNew) {
       setState(() {
         _newQuestions.remove(question);
       });
-      showIOSToast(context, 'Question deleted successfully!');
     } else {
       try {
         await _firestore
@@ -181,35 +222,12 @@ class _EditExercisePageState extends State<EditExercisePage> {
           _questions.remove(question);
         });
 
-        showIOSToast(context, 'Question deleted successfully!');
+        _showToast(context, 'Question deleted successfully!');
       } catch (e) {
         print('Error deleting question: $e');
-        showIOSToast(context, 'Error deleting question: $e');
+        _showToast(context, 'Error deleting question: $e');
       }
     }
-  }
-
-  Future<bool> _showIOSDeleteDialog(
-      BuildContext context, String title, String message) async {
-    return await showCupertinoDialog(
-          context: context,
-          builder: (context) => CupertinoAlertDialog(
-            title: Text(title),
-            content: Text(message),
-            actions: [
-              CupertinoDialogAction(
-                child: const Text('Cancel'),
-                onPressed: () => Navigator.of(context).pop(false),
-              ),
-              CupertinoDialogAction(
-                isDestructiveAction: true,
-                child: const Text('Delete'),
-                onPressed: () => Navigator.of(context).pop(true),
-              ),
-            ],
-          ),
-        ) ??
-        false;
   }
 
   void _addNewQuestion() {
@@ -221,11 +239,12 @@ class _EditExercisePageState extends State<EditExercisePage> {
         'C': '',
         'D': '',
         'correctAnswer': '',
+        'expanded': true, // Automatically expand new questions
       });
     });
   }
 
-  void showIOSToast(BuildContext context, String message) {
+  void _showToast(BuildContext context, String message) {
     final overlay = Overlay.of(context);
     final overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
@@ -263,175 +282,194 @@ class _EditExercisePageState extends State<EditExercisePage> {
         title: const Text('Edit Exercise'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red),
+            onPressed: _deleteExercise,
+          ),
+          IconButton(
             icon: const Icon(Icons.save),
             onPressed: _updateExercise,
           ),
-          IconButton(
-            icon: const Icon(Icons.delete),
-            onPressed: _deleteExercise,
-          ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Exercise Title'),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Share Exercise',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                Switch(
-                  value: _isShared,
-                  onChanged: (value) {
-                    setState(() {
-                      _isShared = value;
-                    });
-                  },
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-            const Text(
-              'Edit Questions',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            ..._questions.map((question) {
-              return ExpansionTile(
-                title: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-
-                  children: [
-                    Expanded(
-                      child: Text(
-                        question['questionText'],
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-
-                          overflow: TextOverflow.ellipsis, // Prevent overflow by truncating text
-                          maxLines: 1, // Limit to one line
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => _deleteQuestion(question),
-                    ),
-                  ],
-                ),
-                children: [_buildQuestionFields(question)],
-              );
-            }).toList(),
-            ..._newQuestions.map((question) {
-              return ExpansionTile(
-                title: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'New Question',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => _deleteQuestion(question, isNew: true),
-                    ),
-                  ],
-                ),
-                children: [_buildQuestionFields(question)],
-              );
-            }).toList(),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _addNewQuestion,
-              child: const Text('Add New Question'),
-            ),
-          ],
+      body: Form(
+        key: _formKey,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ListView(
+            children: [
+              TextFormField(
+                controller: _titleController,
+                decoration: const InputDecoration(labelText: 'Exercise Title'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Exercise title cannot be empty';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Share Exercise',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  Switch(
+                    value: _isShared,
+                    onChanged: (value) {
+                      setState(() {
+                        _isShared = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              ..._questions.map((question) => _buildQuestionTile(question)),
+              ..._newQuestions
+                  .map((question) => _buildQuestionTile(question, isNew: true)),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _addNewQuestion,
+                child: const Text('Add New Question'),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
+  Widget _buildQuestionTile(Map<String, dynamic> question,
+      {bool isNew = false}) {
+    return ExpansionTile(
+      initiallyExpanded: question['expanded'] ?? false,
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              question['questionText'].isEmpty
+                  ? 'New Question'
+                  : question['questionText'],
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red),
+            onPressed: () => _deleteQuestion(question, isNew: isNew),
+          ),
+        ],
+      ),
+      children: [_buildQuestionFields(question)],
+    );
+  }
+
   Widget _buildQuestionFields(Map<String, dynamic> question) {
     return Padding(
-      padding: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
-          TextField(
-            decoration: InputDecoration(
+          TextFormField(
+            initialValue: question['questionText'],
+            maxLines: null,
+            decoration: const InputDecoration(
               labelText: 'Question Text',
               border: const OutlineInputBorder(),
-              errorText:
-                  question['questionText'].isEmpty ? 'This field is required' : null,
             ),
-            maxLines: null,
             onChanged: (value) => question['questionText'] = value,
-            controller: TextEditingController(text: question['questionText']),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Question text cannot be empty';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 8),
-          TextField(
-            decoration: InputDecoration(
+          TextFormField(
+            initialValue: question['A'],
+            maxLines: null,
+            decoration: const InputDecoration(
               labelText: 'Option A',
               border: const OutlineInputBorder(),
-              errorText: question['A'].isEmpty ? 'This field is required' : null,
             ),
-            maxLines: null,
             onChanged: (value) => question['A'] = value,
-            controller: TextEditingController(text: question['A']),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Option A cannot be empty';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 8),
-          TextField(
-            decoration: InputDecoration(
+          TextFormField(
+            initialValue: question['B'],
+            maxLines: null,
+            decoration: const InputDecoration(
               labelText: 'Option B',
               border: const OutlineInputBorder(),
-              errorText: question['B'].isEmpty ? 'This field is required' : null,
             ),
-            maxLines: null,
             onChanged: (value) => question['B'] = value,
-            controller: TextEditingController(text: question['B']),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Option B cannot be empty';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 8),
-          TextField(
-            decoration: InputDecoration(
+          TextFormField(
+            initialValue: question['C'],
+            maxLines: null,
+            decoration: const InputDecoration(
               labelText: 'Option C',
               border: const OutlineInputBorder(),
-              errorText: question['C'].isEmpty ? 'This field is required' : null,
             ),
-            maxLines: null,
             onChanged: (value) => question['C'] = value,
-            controller: TextEditingController(text: question['C']),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Option C cannot be empty';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 8),
-          TextField(
-            decoration: InputDecoration(
+          TextFormField(
+            initialValue: question['D'],
+            maxLines: null,
+            decoration: const InputDecoration(
               labelText: 'Option D',
               border: const OutlineInputBorder(),
-              errorText: question['D'].isEmpty ? 'This field is required' : null,
             ),
-            maxLines: null,
             onChanged: (value) => question['D'] = value,
-            controller: TextEditingController(text: question['D']),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Option D cannot be empty';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 8),
-          TextField(
-            decoration: InputDecoration(
+          TextFormField(
+            initialValue: question['correctAnswer'],
+            maxLines: null,
+            decoration: const InputDecoration(
               labelText: 'Correct Answer (A, B, C, or D)',
               border: const OutlineInputBorder(),
-              errorText: question['correctAnswer'].isEmpty
-                  ? 'This field is required'
-                  : null,
             ),
-            maxLines: 1,
-            onChanged: (value) => question['correctAnswer'] = value.toUpperCase(),
-            controller: TextEditingController(text: question['correctAnswer']),
+            onChanged: (value) =>
+                question['correctAnswer'] = value.toUpperCase(),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Correct answer cannot be empty';
+              }
+              if (!['A', 'B', 'C', 'D'].contains(value.toUpperCase())) {
+                return 'Correct answer must be one of: A, B, C, or D';
+              }
+              return null;
+            },
           ),
         ],
       ),
