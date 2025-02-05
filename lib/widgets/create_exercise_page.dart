@@ -58,21 +58,21 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
       final username = userDoc['username'] ?? user.email;
 
       final exerciseDoc = await _firestore.collection('exercises').add({
-        'title': _titleController.text,
-        'creator': user.email,
-        'username': username,
+        'title': _titleController.text.trim(),
+        'creatorId': user.uid,
+        'creatorUsername': username,
         'shared': _isShared,
         'timestamp': Timestamp.now(),
       });
 
       for (var question in _questions) {
         await exerciseDoc.collection('questions').add({
-          'questionText': question['questionText'],
-          'A': question['A'],
-          'B': question['B'],
-          'C': question['C'],
-          'D': question['D'],
-          'correctAnswer': question['correctAnswer'].toUpperCase(),
+          'questionText': question['questionText'].trim(),
+          'A': question['A'].trim(),
+          'B': question['B'].trim(),
+          'C': question['C'].trim(),
+          'D': question['D'].trim(),
+          'correctAnswer': question['correctAnswer'].toUpperCase().trim(),
         });
       }
 
@@ -136,6 +136,7 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
             maxLines: 1,
             decoration: const InputDecoration(
               labelText: 'Correct Answer (A, B, C, or D)',
+              hintText: 'Enter A, B, C, or D',
               border: OutlineInputBorder(),
             ),
             onChanged: (value) {

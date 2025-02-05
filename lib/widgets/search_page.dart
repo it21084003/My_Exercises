@@ -166,7 +166,7 @@ Future<void> _searchExercises(String query) async {
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           subtitle: Text(
-                            'Created by: ${result['creator'] ?? 'Unknown User'}',
+                            'Created by: ${result['creatorId'] ?? 'Unknown User'}',
                           ),
                           onTap: () {
                             Navigator.push(

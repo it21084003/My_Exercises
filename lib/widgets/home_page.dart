@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
-import 'my_exercises_page.dart';
-import 'profile_screen.dart';
+import 'my_exercises_screen.dart';
+import 'menu_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -16,7 +16,7 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> _pages = const [
     HomeScreen(),
     MyExercisesPage(),
-    ProfileScreen(),
+    MenuScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -45,7 +45,7 @@ class _HomePageState extends State<HomePage> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
-            label: 'Profile',
+            label: 'Menu',
           ),
         ],
         currentIndex: _selectedIndex,

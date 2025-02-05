@@ -21,7 +21,6 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
         builder: (context) => const CreateExercisePage(),
       ),
     );
-    // No need to manually fetch, since StreamBuilder will update automatically
   }
 
   @override
@@ -46,10 +45,12 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
               ],
             ),
             const SizedBox(height: 8),
+
+            // StreamBuilder to fetch exercises
             Expanded(
               child: StreamBuilder<List<Map<String, dynamic>>>(
-                stream: _firestoreService
-                    .streamUserExercises(), // 🔥 Stream-based listener
+                stream:
+                    _firestoreService.streamUserExercises(), // Updated Stream
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
@@ -63,17 +64,20 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
                   } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return const Center(
                       child: Text(
-                          'No exercises found. Create your first exercise!'),
+                          'No exercises found. Create or fork an exercise!'),
                     );
                   }
 
                   final exercises = snapshot.data!;
+
                   return ListView.builder(
                     itemCount: exercises.length,
                     itemBuilder: (context, index) {
                       final exercise = exercises[index];
                       final exerciseId = exercise['exerciseId'];
                       final title = exercise['title'] ?? 'Untitled Exercise';
+                      final bool isForked = exercise['isForked'] ?? false;
+                      final originalCreator = exercise['creatorUsername'] ?? '';
 
                       return Card(
                         elevation: 4,
@@ -86,22 +90,30 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
                             title,
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          subtitle:
-                              Text('Created on: ${exercise['timestamp']}'),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.blue),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => EditExercisePage(
-                                    exerciseId: exerciseId,
-                                    title: title,
-                                    shared: exercise['shared'],
-                                  ),
+                          subtitle: isForked
+                              ? Text('Forked from: $originalCreator')
+                              : const Text('Created by you'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (!isForked) // Show Edit button only for original exercises
+                                IconButton(
+                                  icon: const Icon(Icons.edit,
+                                      color: Colors.blue),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => EditExercisePage(
+                                          exerciseId: exerciseId,
+                                          title: title,
+                                          shared: exercise['shared'],
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                              );
-                            },
+                            ],
                           ),
                           onTap: () {
                             if (exerciseId == null) {

@@ -83,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           exercise['title'] ?? 'Untitled Exercise',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        subtitle: Text('Created by: ${exercise['username'] ?? 'Unknown'}'),
+                        subtitle: Text('${exercise['creatorUsername'] ?? 'Unknown'}'),
                         onTap: () {
                           if (exercise['exerciseId'] == null) {
                             ScaffoldMessenger.of(context).showSnackBar(

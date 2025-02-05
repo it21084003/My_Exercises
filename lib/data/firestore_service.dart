@@ -1,28 +1,46 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:my_exercises/models/question_model.dart';
 import 'auth_service.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Stream user-specific exercises (real-time updates)
-  Stream<List<Map<String, dynamic>>> streamUserExercises() {
-    final currentUser = AuthService().currentUser;
-    if (currentUser == null) {
-      return Stream.value([]); // Return an empty stream if no user is logged in
-    }
-
-    return _firestore
-        .collection('exercises')
-        .where('creator', isEqualTo: currentUser.email)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) {
-              return {
-                'exerciseId': doc.id, // Use document ID as exerciseId
-                ...doc.data() as Map<String, dynamic>,
-              };
-            }).toList());
+Stream<List<Map<String, dynamic>>> streamUserExercises() {
+  final currentUser = AuthService().currentUser;
+  if (currentUser == null) {
+    return Stream.value([]); // No user logged in
   }
+
+  final userExercisesRef = _firestore
+      .collection('exercises')
+      .where('creatorId', isEqualTo: currentUser.uid);
+
+  final forkedExercisesRef = _firestore
+      .collection('users')
+      .doc(currentUser.uid)
+      .collection('forkedExercises');
+
+  return userExercisesRef.snapshots().asyncMap((createdSnapshot) async {
+    final createdExercises = createdSnapshot.docs.map((doc) {
+      return {
+        'exerciseId': doc.id,
+        ...doc.data(),
+        'isForked': false, // Mark as created by user
+      };
+    }).toList();
+
+    final forkedSnapshot = await forkedExercisesRef.get();
+    final forkedExercises = forkedSnapshot.docs.map((doc) {
+      return {
+        ...doc.data(),
+        'isForked': true, // Mark as forked
+      };
+    }).toList();
+
+    return [...createdExercises, ...forkedExercises]; // Combine both lists
+  });
+}
 
   // Fetch shared exercises
   Future<List<Map<String, dynamic>>> fetchSharedExercises() async {
@@ -72,7 +90,7 @@ class FirestoreService {
 
       QuerySnapshot querySnapshot = await _firestore
           .collection('exercises')
-          .where('creator', isEqualTo: currentUser.email)
+          .where('creatorId', isEqualTo: currentUser.email)
           .get();
 
       return querySnapshot.docs.map((doc) {

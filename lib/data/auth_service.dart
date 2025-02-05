@@ -43,7 +43,8 @@ class AuthService {
         await _firestore.collection('users').doc(user.uid).set({
           'uid': user.uid,
           'email': email,
-          'userName': userName,
+          'username': userName,
+          'description':null,
           'profilePicture': null, // Placeholder for profile picture
         });
         return true;
@@ -80,6 +81,10 @@ class AuthService {
 
   // Function to log out the current user
   Future<void> logout() async {
-    await _auth.signOut();
+    try {
+      await _auth.signOut();
+    } catch (e) {
+      print('Error during logout: $e');
+    }
   }
 }

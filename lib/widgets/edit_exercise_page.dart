@@ -24,7 +24,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   List<Map<String, dynamic>> _questions = [];
-  List<Map<String, dynamic>> _newQuestions = [];
+  final List<Map<String, dynamic>> _newQuestions = [];
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   @override
@@ -269,7 +269,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
       ),
     );
 
-    overlay?.insert(overlayEntry);
+    overlay.insert(overlayEntry);
     Future.delayed(const Duration(seconds: 2), () {
       overlayEntry.remove();
     });
@@ -377,7 +377,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
             maxLines: null,
             decoration: const InputDecoration(
               labelText: 'Question Text',
-              border: const OutlineInputBorder(),
+              border: OutlineInputBorder(),
             ),
             onChanged: (value) => question['questionText'] = value,
             validator: (value) {
@@ -393,7 +393,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
             maxLines: null,
             decoration: const InputDecoration(
               labelText: 'Option A',
-              border: const OutlineInputBorder(),
+              border: OutlineInputBorder(),
             ),
             onChanged: (value) => question['A'] = value,
             validator: (value) {
@@ -409,7 +409,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
             maxLines: null,
             decoration: const InputDecoration(
               labelText: 'Option B',
-              border: const OutlineInputBorder(),
+              border: OutlineInputBorder(),
             ),
             onChanged: (value) => question['B'] = value,
             validator: (value) {
@@ -425,7 +425,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
             maxLines: null,
             decoration: const InputDecoration(
               labelText: 'Option C',
-              border: const OutlineInputBorder(),
+              border: OutlineInputBorder(),
             ),
             onChanged: (value) => question['C'] = value,
             validator: (value) {
@@ -441,7 +441,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
             maxLines: null,
             decoration: const InputDecoration(
               labelText: 'Option D',
-              border: const OutlineInputBorder(),
+              border: OutlineInputBorder(),
             ),
             onChanged: (value) => question['D'] = value,
             validator: (value) {
@@ -457,7 +457,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
             maxLines: null,
             decoration: const InputDecoration(
               labelText: 'Correct Answer (A, B, C, or D)',
-              border: const OutlineInputBorder(),
+              border: OutlineInputBorder(),
             ),
             onChanged: (value) =>
                 question['correctAnswer'] = value.toUpperCase(),
