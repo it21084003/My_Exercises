@@ -29,11 +29,11 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        
         child:
             _pages[_selectedIndex], // Ensure content respects system UI areas
       ),
       bottomNavigationBar: BottomNavigationBar(
+        
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
@@ -50,6 +50,10 @@ class _HomePageState extends State<HomePage> {
         ],
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
+        selectedFontSize: 10, // Adjust font size for selected item
+        unselectedFontSize: 10, // Adjust font size for unselected items
+        iconSize: 18, // Adjust icon size
+        type: BottomNavigationBarType.fixed, // Ensure consistent layout
       ),
     );
   }

@@ -11,12 +11,15 @@ class CreateExercisePage extends StatefulWidget {
 
 class _CreateExercisePageState extends State<CreateExercisePage> {
   final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descriptionController =
+      TextEditingController(); // Add description controller
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AuthService _authService = AuthService();
 
   final List<Map<String, dynamic>> _questions = [];
   bool _isShared = false; // Default shared status
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  bool _showQuestionError = false; // To control red border for the button
 
   void _addQuestion() {
     setState(() {
@@ -29,12 +32,7 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
         'correctAnswer': '',
         'expanded': true, // Auto-expand new questions
       });
-    });
-  }
-
-  void _deleteQuestion(int index) {
-    setState(() {
-      _questions.removeAt(index);
+      _showQuestionError = false; // Remove error when a question is added
     });
   }
 
@@ -43,10 +41,10 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
       return;
     }
 
-    if (_titleController.text.isEmpty || _questions.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please provide a title and at least one question.')),
-      );
+    if (_questions.isEmpty) {
+      setState(() {
+        _showQuestionError = true; // Show red border on the button
+      });
       return;
     }
 
@@ -54,11 +52,13 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
       final user = _authService.currentUser;
       if (user == null) throw Exception('User not logged in.');
 
-      DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
+      DocumentSnapshot userDoc =
+          await _firestore.collection('users').doc(user.uid).get();
       final username = userDoc['username'] ?? user.email;
 
       final exerciseDoc = await _firestore.collection('exercises').add({
         'title': _titleController.text.trim(),
+        'description': _descriptionController.text.trim(), // Save description
         'creatorId': user.uid,
         'creatorUsername': username,
         'shared': _isShared,
@@ -76,9 +76,9 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
         });
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Exercise created successfully!')),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(content: Text('Exercise created successfully!')),
+      // );
 
       Navigator.pop(context, true);
     } catch (e) {
@@ -88,6 +88,8 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
       );
     }
   }
+
+  
 
   Widget _buildQuestionTile(Map<String, dynamic> question, int index) {
     return Card(
@@ -100,14 +102,21 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
           children: [
             Expanded(
               child: Text(
-                question['questionText'].isEmpty ? 'New Question' : question['questionText'],
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                question['questionText'].isEmpty
+                    ? 'New Question'
+                    : question['questionText'],
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => _deleteQuestion(index),
+              onPressed: () {
+                setState(() {
+                  _questions.removeAt(index);
+                });
+              },
             ),
           ],
         ),
@@ -121,15 +130,22 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
-          _buildTextField(label: 'Question Text', questionKey: 'questionText', question: question),
+          _buildTextField(
+              label: 'Question Text',
+              questionKey: 'questionText',
+              question: question),
           const SizedBox(height: 8),
-          _buildTextField(label: 'Option A', questionKey: 'A', question: question),
+          _buildTextField(
+              label: 'Option A', questionKey: 'A', question: question),
           const SizedBox(height: 8),
-          _buildTextField(label: 'Option B', questionKey: 'B', question: question),
+          _buildTextField(
+              label: 'Option B', questionKey: 'B', question: question),
           const SizedBox(height: 8),
-          _buildTextField(label: 'Option C', questionKey: 'C', question: question),
+          _buildTextField(
+              label: 'Option C', questionKey: 'C', question: question),
           const SizedBox(height: 8),
-          _buildTextField(label: 'Option D', questionKey: 'D', question: question),
+          _buildTextField(
+              label: 'Option D', questionKey: 'D', question: question),
           const SizedBox(height: 8),
           TextFormField(
             initialValue: question['correctAnswer'],
@@ -215,6 +231,21 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
                 },
               ),
               const SizedBox(height: 16),
+              TextFormField(
+                controller: _descriptionController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'Exercise Description',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Exercise description cannot be empty';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -233,11 +264,43 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
                 ],
               ),
               const Divider(height: 24),
-              ..._questions.asMap().entries.map((entry) => _buildQuestionTile(entry.value, entry.key)),
+              ..._questions
+                  .asMap()
+                  .entries
+                  .map((entry) => _buildQuestionTile(entry.value, entry.key)),
               const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _addQuestion,
-                child: const Text('Add New Question'),
+              Column(
+                children: [
+                  Container(
+                    width: double.infinity, // Make the button full-width
+                    decoration: BoxDecoration(
+                      border: _showQuestionError
+                          ? Border.all(color: Colors.red, width: 2)
+                          : null,
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    child: ElevatedButton(
+                      onPressed: _addQuestion,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12), // Adjust height
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                      ),
+                      child: const Text('Add New Question',
+                          style: TextStyle(fontSize: 16)),
+                    ),
+                  ),
+                  if (_showQuestionError)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        'Please add at least one question.',
+                        style: TextStyle(color: Colors.red, fontSize: 14),
+                      ),
+                    ),
+                ],
               ),
             ],
           ),

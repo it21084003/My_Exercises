@@ -18,7 +18,8 @@ class UserProfilePage extends StatefulWidget {
   State<UserProfilePage> createState() => _UserProfilePageState();
 }
 
-class _UserProfilePageState extends State<UserProfilePage> {
+class _UserProfilePageState extends State<UserProfilePage>
+    with SingleTickerProviderStateMixin {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -27,7 +28,12 @@ class _UserProfilePageState extends State<UserProfilePage> {
   int followersCount = 0;
   int followingCount = 0;
   List<Map<String, dynamic>> userExercises = [];
+  Set<String> forkedExercises = {}; // Track forked exercises
   late bool isFollowing;
+
+  // Animation controller for shake effect
+  late AnimationController _animationController;
+  late Animation<double> _shakeAnimation;
 
   @override
   void initState() {
@@ -36,6 +42,29 @@ class _UserProfilePageState extends State<UserProfilePage> {
     _fetchUserProfile();
     _fetchFollowStatus();
     _fetchExercises();
+    _fetchForkedExercises();
+
+    // Initialize animation
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+
+    _shakeAnimation = Tween<double>(begin: 0, end: 10)
+        .chain(CurveTween(curve: Curves.elasticIn))
+        .animate(_animationController);
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _triggerShake() async {
+    _animationController.forward(from: 0).then((_) {
+      _animationController.reverse();
+    });
   }
 
   Future<void> _fetchUserProfile() async {
@@ -92,7 +121,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
     try {
       QuerySnapshot exerciseSnapshot = await _firestore
           .collection('exercises')
-          .where('creatorId', isEqualTo: widget.uid)
+          .where('creatorId', isEqualTo: widget.uid) // Filter by user ID
+          .where('shared', isEqualTo: true) // Filter by "shared" field
           .get();
 
       setState(() {
@@ -102,13 +132,35 @@ class _UserProfilePageState extends State<UserProfilePage> {
             'id': doc.id,
             'title': data['title'] ?? 'Untitled',
             'description': data['description'] ?? 'No description',
-            'creatorId': data['creatorId'] ?? 'Unknown', // Include creatorId
-          'creatorUsername': data['creatorUsername'] ?? 'Unknown', // Include creatorUsername
+            'creatorId': data['creatorId'] ?? 'Unknown',
+            'creatorUsername': data['creatorUsername'] ?? 'Unknown',
+            'shared': data['shared'] ?? false,
           };
         }).toList();
       });
     } catch (e) {
       print('Error fetching exercises: $e');
+    }
+  }
+
+  Future<void> _fetchForkedExercises() async {
+    User? currentUser = _auth.currentUser;
+    if (currentUser == null) return;
+
+    try {
+      QuerySnapshot forkedSnapshot = await _firestore
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('forkedExercises')
+          .get();
+
+      setState(() {
+        forkedExercises = forkedSnapshot.docs
+            .map((doc) => doc.id)
+            .toSet(); // Store forked exercise IDs
+      });
+    } catch (e) {
+      print('Error fetching forked exercises: $e');
     }
   }
 
@@ -144,73 +196,76 @@ class _UserProfilePageState extends State<UserProfilePage> {
     }
   }
 
-Future<void> _forkExercise(Map<String, dynamic> exercise) async {
-  User? currentUser = _auth.currentUser;
-  if (currentUser == null) {
-    print("Error: No logged-in user.");
-    return;
-  }
-
-  print("Forking Exercise: ${exercise['title']} (ID: ${exercise['id']})");
-  print("Forking Exercise: ${exercise['creatorId']} (ID: ${exercise['creatorUsername']})");
-
-  final exerciseRef = _firestore.collection('exercises').doc(exercise['id']);
-  final userForkedRef = _firestore
-      .collection('users')
-      .doc(currentUser.uid)
-      .collection('forkedExercises');
-
-  try {
-    // Check if the exercise is already forked
-    DocumentSnapshot forkCheck = await userForkedRef.doc(exercise['id']).get();
-    if (forkCheck.exists) {
-      print("⚠️ Warning: Exercise already forked.");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You have already forked this exercise!'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+  Future<void> _forkExercise(Map<String, dynamic> exercise) async {
+    User? currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      print("Error: No logged-in user.");
       return;
     }
 
-    // Update original exercise: Add user to 'forkedBy' array
-    await exerciseRef.update({
-      'forkedBy': FieldValue.arrayUnion([currentUser.uid])
-    }).then((_) {
-      print("ForkedBy array updated in Firestore.");
-    });
+    print("Forking Exercise: ${exercise['title']} (ID: ${exercise['id']})");
 
-    // Add forked exercise under the user's "forkedExercises"
-    await userForkedRef.doc(exercise['id']).set({
-      'exerciseId': exercise['id'],
-      'title': exercise['title'],
-      'description': exercise['description'],
-      'creatorId': exercise['creatorId'],
-      'creatorUsername': exercise['creatorUsername'], // Use this field directly
-      'timestamp': FieldValue.serverTimestamp(), // Store fork time
-    }).then((_) {
-      print("Forked exercise added to user's forkedExercises.");
-    });
+    final exerciseRef = _firestore.collection('exercises').doc(exercise['id']);
+    final userForkedRef = _firestore
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('forkedExercises');
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Exercise forked successfully!'),
-        backgroundColor: Colors.green,
-      ),
-    );
+    try {
+      // Check if the exercise is already forked
+      if (forkedExercises.contains(exercise['id'])) {
+        print("⚠️ Warning: Exercise already forked.");
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   const SnackBar(
+        //     content: Text('You have already forked this exercise!'),
+        //     backgroundColor: Colors.orange,
+        //   ),
+        // );
+        return;
+      }
 
-    setState(() {}); // Refresh UI
-  } catch (e) {
-    print('Error forking exercise: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Error: $e'),
-        backgroundColor: Colors.red,
-      ),
-    );
+      // Optimistically update the state to reflect the change immediately
+      setState(() {
+        forkedExercises.add(exercise['id']);
+      });
+
+      // Update original exercise: Add user to 'forkedBy' array and increment 'downloadedCount'
+      await exerciseRef.update({
+        'forkedBy': FieldValue.arrayUnion([currentUser.uid]),
+        'downloadedCount': FieldValue.increment(1), // Increment downloadedCount
+      });
+
+      // Add forked exercise under the user's "forkedExercises"
+      await userForkedRef.doc(exercise['id']).set({
+        'exerciseId': exercise['id'],
+        'title': exercise['title'],
+        'description': exercise['description'],
+        'creatorId': exercise['creatorId'],
+        'creatorUsername': exercise['creatorUsername'],
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(
+      //     content: Text('Exercise forked successfully!'),
+      //     backgroundColor: Colors.green,
+      //   ),
+      // );
+    } catch (e) {
+      // Roll back the state if there's an error
+      setState(() {
+        forkedExercises.remove(exercise['id']);
+      });
+
+      print('Error forking exercise: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
-}
 
   void _showExerciseDetails(Map<String, dynamic> exercise) {
     Navigator.push(
@@ -332,6 +387,9 @@ Future<void> _forkExercise(Map<String, dynamic> exercise) async {
                             itemCount: userExercises.length,
                             itemBuilder: (context, index) {
                               final exercise = userExercises[index];
+                              final isForked =
+                                  forkedExercises.contains(exercise['id']);
+
                               return Card(
                                 margin: const EdgeInsets.symmetric(vertical: 6),
                                 elevation: 3,
@@ -345,15 +403,37 @@ Future<void> _forkExercise(Map<String, dynamic> exercise) async {
                                         fontWeight: FontWeight.bold),
                                   ),
                                   subtitle: Text(exercise['description']),
-                                  trailing: IconButton(
-                                    icon: const Icon(Icons.content_copy,
-                                        color: Colors.blue),
-                                    onPressed: () =>
-                                        _forkExercise(exercise), // Fork action
+                                  trailing: AnimatedBuilder(
+                                    animation: _shakeAnimation,
+                                    builder: (context, child) {
+                                      return Transform.translate(
+                                        offset: Offset(
+                                          !isForked ? _shakeAnimation.value : 0,
+                                          0,
+                                        ),
+                                        child: IconButton(
+                                          icon: Icon(
+                                            isForked
+                                                ? Icons.check_circle
+                                                : Icons.download,
+                                            color: isForked
+                                                ? Colors.green
+                                                : Colors.blue,
+                                          ),
+                                          onPressed: isForked
+                                              ? null
+                                              : () {
+                                                  forkedExercises
+                                                      .add(exercise['id']);
+                                                  setState(() {});
+                                                },
+                                        ),
+                                      );
+                                    },
                                   ),
-                                  onTap: () {
-                                    print('Selected Exercise: $exercise');
-                                  },
+                                  onTap: isForked
+                                      ? () => _showExerciseDetails(exercise)
+                                      : _triggerShake,
                                 ),
                               );
                             },

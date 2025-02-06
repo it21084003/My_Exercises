@@ -13,7 +13,7 @@ class _SearchPageState extends State<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _searchResults = [];
   bool _isLoading = false;
-  bool _hasSearched = false; // Tracks if the user has performed a search
+  bool _hasSearched = false;
 
   @override
   void dispose() {
@@ -21,63 +21,67 @@ class _SearchPageState extends State<SearchPage> {
     super.dispose();
   }
 
-Future<void> _searchExercises(String query) async {
-  if (query.trim().isEmpty) return;
+  Future<void> _searchExercises(String query) async {
+    if (query.trim().isEmpty) return;
 
-  setState(() {
-    _isLoading = true;
-    _hasSearched = true; // Mark that a search has been performed
-  });
+    setState(() {
+      _isLoading = true;
+      _hasSearched = true;
+    });
 
-  try {
-    final querySnapshot = await FirebaseFirestore.instance
-        .collection('exercises')
-        .where('shared', isEqualTo: true) // Filter for shared exercises
-        .get();
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('exercises')
+          .where('shared', isEqualTo: true)
+          .get();
 
-    List<Map<String, dynamic>> results = [];
+      List<Map<String, dynamic>> results = [];
 
-    for (var doc in querySnapshot.docs) {
-      final data = doc.data();
-      if ((data['title'] as String)
-          .toLowerCase()
-          .contains(query.toLowerCase())) {
-        results.add({
-          'exerciseId': doc.id,
-          ...data,
-        });
-      } else {
-        final questionsSnapshot =
-            await doc.reference.collection('questions').get();
-        for (var questionDoc in questionsSnapshot.docs) {
-          final questionData = questionDoc.data();
-          if ((questionData['questionText'] as String)
-              .toLowerCase()
-              .contains(query.toLowerCase())) {
-            results.add({
-              'exerciseId': doc.id,
-              ...data,
-            });
-            break;
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+        final title = data['title'] as String? ?? '';
+        final description = data['description'] as String? ?? '';
+
+        if (title.toLowerCase().contains(query.toLowerCase()) ||
+            description.toLowerCase().contains(query.toLowerCase())) {
+          results.add({
+            'exerciseId': doc.id,
+            ...data,
+          });
+        } else {
+          final questionsSnapshot =
+              await doc.reference.collection('questions').get();
+          for (var questionDoc in questionsSnapshot.docs) {
+            final questionData = questionDoc.data();
+            if ((questionData['questionText'] as String)
+                .toLowerCase()
+                .contains(query.toLowerCase())) {
+              results.add({
+                'exerciseId': doc.id,
+                ...data,
+              });
+              break;
+            }
           }
         }
       }
-    }
 
-    setState(() {
-      _searchResults = results;
-      _isLoading = false;
-    });
-  } catch (e) {
-    print('Error during search: $e');
-    setState(() {
-      _isLoading = false;
-    });
+      setState(() {
+        _searchResults = results;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error during search: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -96,7 +100,9 @@ Future<void> _searchExercises(String query) async {
                     child: Container(
                       height: 40,
                       decoration: BoxDecoration(
-                        color: Colors.grey[200],
+                        color: isDarkMode
+                            ? Colors.grey[800]
+                            : Colors.grey[200], // Adjust color for dark mode
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -105,20 +111,32 @@ Future<void> _searchExercises(String query) async {
                           Expanded(
                             child: TextField(
                               controller: _searchController,
-                              decoration: const InputDecoration(
-                                hintText: "Search by title or question...",
-                                hintStyle: TextStyle(color: Colors.grey),
+                              decoration: InputDecoration(
+                                hintText: "Search exercises...",
+                                hintStyle: TextStyle(
+                                  color: isDarkMode
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600], // Adjust hint text color
+                                ),
                                 border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(vertical: 10), // Adjust vertical padding
+                                contentPadding: const EdgeInsets.symmetric(vertical: 10),
                               ),
-                              style: const TextStyle(fontSize: 16),
-                              textAlignVertical: TextAlignVertical.center, // Align text vertically
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: isDarkMode
+                                    ? Colors.white
+                                    : Colors.black, // Adjust input text color
+                              ),
+                              textAlignVertical: TextAlignVertical.center,
                               onSubmitted: _searchExercises,
                             ),
                           ),
                           if (_searchController.text.isNotEmpty)
                             IconButton(
-                              icon: const Icon(Icons.clear, color: Colors.grey),
+                              icon: Icon(
+                                Icons.clear,
+                                color: isDarkMode ? Colors.white : Colors.grey,
+                              ),
                               onPressed: () {
                                 setState(() {
                                   _searchController.clear();
@@ -138,7 +156,7 @@ Future<void> _searchExercises(String query) async {
               if (!_isLoading && !_hasSearched)
                 const Center(
                   child: Text(
-                    "",
+                    "Search for an exercise...",
                     style: TextStyle(fontSize: 16, color: Colors.grey),
                   ),
                 ),
@@ -165,8 +183,15 @@ Future<void> _searchExercises(String query) async {
                             result['title'] ?? 'Untitled Exercise',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          subtitle: Text(
-                            'Created by: ${result['creatorId'] ?? 'Unknown User'}',
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(result['description'] ?? 'No description'),
+                              Text(
+                                'Created by: ${result['creatorUsername'] ?? 'Unknown User'}',
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                            ],
                           ),
                           onTap: () {
                             Navigator.push(

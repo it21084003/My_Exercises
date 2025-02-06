@@ -20,8 +20,11 @@ class _MenuScreenState extends State<MenuScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   String _username = "";
+  String? profileDescription = "";
   bool _isLoading = true;
   final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _searchResults = [];
   Set<String> _following = {}; // To track users the current user is following
@@ -39,8 +42,18 @@ class _MenuScreenState extends State<MenuScreen> {
     _fetchCounts(); // Fetch count for followers & following
 
     // Restore previous search input and results from PageStorage
-    _searchController.text = PageStorage.of(context)?.readState(context, identifier: "searchInput") ?? '';
-    _searchResults = PageStorage.of(context)?.readState(context, identifier: "searchResults") ?? [];
+    _searchController.text = PageStorage.of(context)
+            ?.readState(context, identifier: "searchInput") ??
+        '';
+    _searchResults = PageStorage.of(context)
+            ?.readState(context, identifier: "searchResults") ??
+        [];
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _fetchUserData(); // Re-fetch user data when returning to the screen
   }
 
   Future<void> _fetchUserData() async {
@@ -52,13 +65,17 @@ class _MenuScreenState extends State<MenuScreen> {
         if (userDoc.exists) {
           setState(() {
             _username = userDoc['username'] ?? "Unknown User";
+            profileDescription = userDoc['description'] ?? 'No description';
             _usernameController.text = _username;
+            _descriptionController.text =
+                profileDescription ?? ''; // Populate the description controller
             _isLoading = false;
           });
         }
       } catch (e) {
         setState(() {
           _username = "Error loading name";
+          profileDescription = "Error loading description";
           _isLoading = false;
         });
         print("Error fetching username: $e");
@@ -159,16 +176,13 @@ class _MenuScreenState extends State<MenuScreen> {
           ),
           message: const Text('Manage your profile settings below.'),
           actions: [
-            // Edit Username Option
             CupertinoActionSheetAction(
               onPressed: () {
                 Navigator.pop(context);
-                _showEditUsernameDialog();
+                _showEditProfileDialog(); // Show the profile editing dialog
               },
-              child: const Text('Edit Username'),
+              child: const Text('Edit Profile'),
             ),
-
-            // Logout Option
             CupertinoActionSheetAction(
               isDestructiveAction: true,
               onPressed: () async {
@@ -194,12 +208,18 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  void _showEditUsernameDialog() {
+  void _showEditProfileDialog() {
+    final TextEditingController descriptionController = TextEditingController();
+
+    // Pre-fill current values
+    _usernameController.text = _username;
+    descriptionController.text = profileDescription ?? '';
+
     showCupertinoDialog(
       context: context,
       builder: (BuildContext context) {
         return CupertinoAlertDialog(
-          title: const Text('Edit Username'),
+          title: const Text('Edit Profile'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -207,6 +227,33 @@ class _MenuScreenState extends State<MenuScreen> {
               CupertinoTextField(
                 controller: _usernameController,
                 placeholder: "Enter new username",
+                placeholderStyle: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[400]
+                      : Colors.grey[600], // Dynamic placeholder color
+                ),
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.black, // Dynamic text color
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              ),
+              const SizedBox(height: 8),
+              CupertinoTextField(
+                controller: descriptionController,
+                placeholder: "Enter new description",
+                placeholderStyle: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[400]
+                      : Colors.grey[600], // Dynamic placeholder color
+                ),
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.black, // Dynamic text color
+                ),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               ),
@@ -221,7 +268,10 @@ class _MenuScreenState extends State<MenuScreen> {
             ),
             CupertinoDialogAction(
               onPressed: () async {
-                await _updateUsername();
+                await _updateProfile(
+                  _usernameController.text.trim(),
+                  descriptionController.text.trim(),
+                );
                 Navigator.of(context).pop();
               },
               child: const Text('Save'),
@@ -230,6 +280,53 @@ class _MenuScreenState extends State<MenuScreen> {
         );
       },
     );
+  }
+
+  Future<void> _updateProfile(String newUsername, String newDescription) async {
+    if (newUsername.isEmpty || newDescription.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Username and description cannot be empty.')),
+      );
+      return;
+    }
+
+    User? user = _auth.currentUser;
+    if (user != null) {
+      try {
+        // Update the 'users' document
+        await _firestore.collection('users').doc(user.uid).update({
+          'username': newUsername,
+          'description': newDescription,
+        });
+
+        // Update exercises created by the user
+        QuerySnapshot userExercises = await _firestore
+            .collection('exercises')
+            .where('creatorId', isEqualTo: user.uid)
+            .get();
+
+        for (var exercise in userExercises.docs) {
+          await _firestore.collection('exercises').doc(exercise.id).update({
+            'creatorUsername': newUsername,
+          });
+        }
+
+        setState(() {
+          _username = newUsername;
+          profileDescription = newDescription;
+        });
+
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   const SnackBar(content: Text('Profile updated successfully!')),
+        // );
+      } catch (e) {
+        print('Error updating profile: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to update profile.')),
+        );
+      }
+    }
   }
 
   Future<bool> _showLogoutDialog(BuildContext context) async {
@@ -290,8 +387,10 @@ class _MenuScreenState extends State<MenuScreen> {
         }).toList();
 
         // Save state in PageStorage
-        PageStorage.of(context)?.writeState(context, _searchResults, identifier: "searchResults");
-        PageStorage.of(context)?.writeState(context, _searchController.text, identifier: "searchInput");
+        PageStorage.of(context)
+            ?.writeState(context, _searchResults, identifier: "searchResults");
+        PageStorage.of(context)?.writeState(context, _searchController.text,
+            identifier: "searchInput");
       });
     } catch (e) {
       print('Error searching users: $e');
@@ -347,6 +446,8 @@ class _MenuScreenState extends State<MenuScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       body: PageStorage(
         bucket: _bucket, // Use the bucket for PageStorage
@@ -366,7 +467,10 @@ class _MenuScreenState extends State<MenuScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.settings, color: Colors.black),
+                    icon: Icon(
+                      Icons.settings,
+                      color: isDarkMode ? Colors.grey : Colors.black,
+                    ),
                     onPressed: _openSettingsMenu,
                   ),
                 ],
@@ -407,7 +511,8 @@ class _MenuScreenState extends State<MenuScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Description',
+                              profileDescription ??
+                                  'No description available', // Dynamically show the description
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey[600],
@@ -482,6 +587,11 @@ class _MenuScreenState extends State<MenuScreen> {
               CupertinoTextField(
                 controller: _searchController,
                 placeholder: "Search people by username",
+                style: TextStyle(
+                  color: isDarkMode
+                      ? Colors.white
+                      : Colors.black, // Adjust text color for dark mode
+                ),
                 onSubmitted: (_) =>
                     _searchPeople(), // Trigger search on Enter key
                 padding:

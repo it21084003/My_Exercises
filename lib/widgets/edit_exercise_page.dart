@@ -20,6 +20,7 @@ class EditExercisePage extends StatefulWidget {
 
 class _EditExercisePageState extends State<EditExercisePage> {
   final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
   bool _isShared = false;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -32,7 +33,23 @@ class _EditExercisePageState extends State<EditExercisePage> {
     super.initState();
     _titleController.text = widget.title;
     _isShared = widget.shared;
+    _fetchExerciseDetails();
     _fetchQuestions();
+  }
+    Future<void> _fetchExerciseDetails() async {
+    try {
+      DocumentSnapshot exerciseDoc =
+          await _firestore.collection('exercises').doc(widget.exerciseId).get();
+
+      if (exerciseDoc.exists) {
+        setState(() {
+          _descriptionController.text =
+              exerciseDoc['description'] ?? ''; // Load description
+        });
+      }
+    } catch (e) {
+      print("Error fetching exercise details: $e");
+    }
   }
 
   Future<void> _fetchQuestions() async {
@@ -101,9 +118,9 @@ class _EditExercisePageState extends State<EditExercisePage> {
       // Delete the exercise itself
       await _firestore.collection('exercises').doc(widget.exerciseId).delete();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Exercise deleted successfully!')),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(content: Text('Exercise deleted successfully!')),
+      // );
 
       Navigator.pop(context);
     } catch (e) {
@@ -124,6 +141,10 @@ class _EditExercisePageState extends State<EditExercisePage> {
         _showToast(context, 'Exercise title cannot be empty!');
         return;
       }
+      if (_descriptionController.text.isEmpty) {
+        _showToast(context, 'Exercise description cannot be empty!');
+        return;
+      }
 
       for (var question in [..._questions, ..._newQuestions]) {
         if (question['questionText'].isEmpty ||
@@ -137,7 +158,8 @@ class _EditExercisePageState extends State<EditExercisePage> {
       }
 
       await _firestore.collection('exercises').doc(widget.exerciseId).update({
-        'title': _titleController.text,
+        'title': _titleController.text.trim(),
+        'description': _descriptionController.text.trim(),
         'shared': _isShared,
       });
 
@@ -172,7 +194,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
         });
       }
 
-      _showToast(context, 'Exercise updated successfully!');
+      //_showToast(context, 'Exercise updated successfully!');
       Navigator.pop(context);
     } catch (e) {
       print('Error updating exercise: $e');
@@ -222,7 +244,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
           _questions.remove(question);
         });
 
-        _showToast(context, 'Question deleted successfully!');
+        //_showToast(context, 'Question deleted successfully!');
       } catch (e) {
         print('Error deleting question: $e');
         _showToast(context, 'Error deleting question: $e');
@@ -275,6 +297,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
     });
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -282,11 +305,11 @@ class _EditExercisePageState extends State<EditExercisePage> {
         title: const Text('Edit Exercise'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete, color: Colors.red),
+            icon: const Icon(Icons.delete_outline, color: Colors.red),
             onPressed: _deleteExercise,
           ),
           IconButton(
-            icon: const Icon(Icons.save),
+            icon: const Icon(Icons.save_alt_outlined),
             onPressed: _updateExercise,
           ),
         ],
@@ -307,6 +330,25 @@ class _EditExercisePageState extends State<EditExercisePage> {
                   return null;
                 },
               ),
+              const SizedBox(height: 16),
+
+              // New Description Field
+              TextFormField(
+                controller: _descriptionController,
+                maxLines: null,
+                decoration: const InputDecoration(
+                  labelText: 'Exercise Description',
+                  hintText: 'Enter a description for the exercise',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Exercise description cannot be empty';
+                  }
+                  return null;
+                },
+              ),
+
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -358,7 +400,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.delete, color: Colors.red),
+            icon: const Icon(Icons.delete_outline, color: Colors.red),
             onPressed: () => _deleteQuestion(question, isNew: isNew),
           ),
         ],

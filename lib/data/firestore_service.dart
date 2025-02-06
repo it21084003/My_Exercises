@@ -5,42 +5,68 @@ import 'auth_service.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-Stream<List<Map<String, dynamic>>> streamUserExercises() {
-  final currentUser = AuthService().currentUser;
-  if (currentUser == null) {
-    return Stream.value([]); // No user logged in
+    Future<void> unforkExercise(String exerciseId) async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      throw Exception("No user is logged in.");
+    }
+
+    try {
+      // Remove the exercise from the user's forkedExercises collection
+      await _firestore
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('forkedExercises')
+          .doc(exerciseId)
+          .delete();
+
+      // Remove the user ID from the 'forkedBy' field in the exercise document
+      await _firestore.collection('exercises').doc(exerciseId).update({
+        'forkedBy': FieldValue.arrayRemove([currentUser.uid]),
+      });
+    } catch (e) {
+      throw Exception("Error unforking exercise: $e");
+    }
   }
 
-  final userExercisesRef = _firestore
-      .collection('exercises')
-      .where('creatorId', isEqualTo: currentUser.uid);
+  Stream<List<Map<String, dynamic>>> streamUserExercises() {
+    final currentUser = AuthService().currentUser;
+    if (currentUser == null) {
+      return Stream.value([]); // No user logged in
+    }
 
-  final forkedExercisesRef = _firestore
-      .collection('users')
-      .doc(currentUser.uid)
-      .collection('forkedExercises');
+    final userExercisesRef = _firestore
+        .collection('exercises')
+        .where('creatorId', isEqualTo: currentUser.uid)
+        ;
 
-  return userExercisesRef.snapshots().asyncMap((createdSnapshot) async {
-    final createdExercises = createdSnapshot.docs.map((doc) {
-      return {
-        'exerciseId': doc.id,
-        ...doc.data(),
-        'isForked': false, // Mark as created by user
-      };
-    }).toList();
+    final forkedExercisesRef = _firestore
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('forkedExercises');
 
-    final forkedSnapshot = await forkedExercisesRef.get();
-    final forkedExercises = forkedSnapshot.docs.map((doc) {
-      return {
-        ...doc.data(),
-        'isForked': true, // Mark as forked
-      };
-    }).toList();
+    return userExercisesRef.snapshots().asyncMap((createdSnapshot) async {
+      final createdExercises = createdSnapshot.docs.map((doc) {
+        return {
+          'exerciseId': doc.id,
+          ...doc.data(),
+          'isForked': false, // Mark as created by user
+        };
+      }).toList();
 
-    return [...createdExercises, ...forkedExercises]; // Combine both lists
-  });
-}
+      final forkedSnapshot = await forkedExercisesRef.get();
+      final forkedExercises = forkedSnapshot.docs.map((doc) {
+        return {
+          ...doc.data(),
+          'isForked': true, // Mark as forked
+        };
+      }).toList();
+
+      return [...createdExercises, ...forkedExercises]; // Combine both lists
+    });
+  }
 
   // Fetch shared exercises
   Future<List<Map<String, dynamic>>> fetchSharedExercises() async {
@@ -108,7 +134,8 @@ Stream<List<Map<String, dynamic>>> streamUserExercises() {
   // Fetch a specific exercise by ID
   Future<Map<String, dynamic>?> getExerciseById(String exerciseId) async {
     try {
-      DocumentSnapshot doc = await _firestore.collection('exercises').doc(exerciseId).get();
+      DocumentSnapshot doc =
+          await _firestore.collection('exercises').doc(exerciseId).get();
       if (doc.exists) {
         return {
           'exerciseId': doc.id,

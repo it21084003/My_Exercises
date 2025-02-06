@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_exercises/widgets/home_screen_detail.dart';
 import '../data/firestore_service.dart';
 import '../screens/exercise_page.dart';
 import 'search_page.dart'; // Import the new search page
@@ -83,7 +84,21 @@ class _HomeScreenState extends State<HomeScreen> {
                           exercise['title'] ?? 'Untitled Exercise',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        subtitle: Text('${exercise['creatorUsername'] ?? 'Unknown'}'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'By: ${exercise['creatorUsername'] ?? 'Unknown'}',
+                              style: const TextStyle(
+                                  fontSize: 14, color: Colors.grey),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              exercise['description'] ?? 'No description.',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
                         onTap: () {
                           if (exercise['exerciseId'] == null) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -97,8 +112,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => ExercisePage(
-                                exerciseNumber: exercise['exerciseId'],
+                              builder: (context) => HomeScreenDetail(
+                                exerciseId: exercise['exerciseId'],
                               ),
                             ),
                           );
