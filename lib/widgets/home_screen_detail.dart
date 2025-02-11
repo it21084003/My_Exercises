@@ -17,7 +17,7 @@ class _HomeScreenDetailState extends State<HomeScreenDetail> {
   String _title = "Loading...";
   String _description = "Fetching details...";
   int _questionCount = 0;
-  List<String> _questionTexts = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -34,14 +34,14 @@ class _HomeScreenDetailState extends State<HomeScreenDetail> {
           _title = exercise['title'] ?? "Untitled Exercise";
           _description = exercise['description'] ?? "No description available.";
           _questionCount = questions.length;
-          _questionTexts = questions.map((q) => q.questionText).toList();
+          _isLoading = false;
         });
       } else {
         setState(() {
           _title = "Exercise Not Found";
           _description = "No details available.";
           _questionCount = 0;
-          _questionTexts = [];
+          _isLoading = false;
         });
       }
     } catch (e) {
@@ -49,12 +49,12 @@ class _HomeScreenDetailState extends State<HomeScreenDetail> {
         _title = "Error loading exercise";
         _description = "An error occurred.";
         _questionCount = 0;
-        _questionTexts = [];
+        _isLoading = false;
       });
     }
   }
 
-  void _showStartExamConfirmation() {
+  void _confirmStartExam() {
     showCupertinoDialog(
       context: context,
       builder: (context) => CupertinoAlertDialog(
@@ -91,71 +91,84 @@ class _HomeScreenDetailState extends State<HomeScreenDetail> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(title: Text(_title)),
+      backgroundColor: isDarkMode ? Colors.black : Colors.white, 
+      appBar: AppBar(
+        title: Text(_title, style: TextStyle(color: isDarkMode ? Colors.white : Colors.black)),
+        backgroundColor: isDarkMode ? Colors.black : Colors.white,
+        foregroundColor: isDarkMode ? Colors.white : Colors.black,
+        elevation: 2,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Exercise Title
-            Text(
-              _title,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            // Exam Info Card
+            Card(
+              color: isDarkMode ? Colors.grey[900] : Colors.grey[200], 
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Exercise Title
+                    Text(
+                      _title,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Exercise Description
+                    Text(
+                      _description,
+                      style: TextStyle(fontSize: 16, color: isDarkMode ? Colors.white70 : Colors.black87),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Total Questions
+                    Row(
+                      children: [
+                        Icon(Icons.question_answer, color: isDarkMode ? Colors.white60 : Colors.black54),
+                        const SizedBox(width: 6),
+                        Text(
+                          "Total Questions: $_questionCount",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 8),
-
-            // Exercise Description
-            Text(
-              _description,
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-
-            // Number of Questions
-            Text(
-              "Total Questions: $_questionCount",
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-
-            // Displaying Numbered Question Texts
-            _questionTexts.isNotEmpty
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: _questionTexts
-                        .asMap()
-                        .entries
-                        .map(
-                          (entry) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 6.0),
-                            child: Text(
-                              "${entry.key + 1}. ${entry.value}",
-                              style: const TextStyle(fontSize: 16),
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  )
-                : const Text(
-                    "",
-                    style: TextStyle(fontSize: 16, color: Colors.red),
-                  ),
-
-            const SizedBox(height: 30),
+            const SizedBox(height: 20),
 
             // Start Exam Button
-            Center(
-              child: ElevatedButton(
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  backgroundColor: isDarkMode ? Colors.deepOrange : Colors.orange, 
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                onPressed: _questionCount > 0 ? _showStartExamConfirmation : null,
-                child: const Text(
+                icon: const Icon(Icons.play_arrow, color: Colors.white),
+                label: const Text(
                   'Start Exam',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
+                onPressed: _confirmStartExam, // Shows Confirmation First
               ),
             ),
           ],

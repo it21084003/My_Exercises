@@ -148,4 +148,31 @@ class FirestoreService {
       return null;
     }
   }
+
+Future<List<Map<String, dynamic>>> fetchFilteredExercises({required String category}) async {
+  try {
+    Query query = _firestore.collection('exercises')
+      .where('shared', isEqualTo: true) // ✅ Fetch only shared exercises
+      .orderBy('timestamp', descending: true); // ✅ Sort by newest
+
+    if (category != "All") {
+      query = query.where('categories', arrayContains: category); // ✅ Filter by category
+    }
+
+    QuerySnapshot querySnapshot = await query.get();
+
+    return querySnapshot.docs.map((doc) {
+      return {
+        "exerciseId": doc.id,
+        "title": doc["title"],
+        "description": doc["description"],
+        "creatorUsername": doc["creatorUsername"],
+        "categories": List<String>.from(doc["categories"] ?? []), // ✅ Ensure list format
+      };
+    }).toList();
+  } catch (e) {
+    print("❌ Error fetching shared exercises: $e");
+    return [];
+  }
+}
 }

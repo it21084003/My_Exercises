@@ -28,6 +28,25 @@ class _EditExercisePageState extends State<EditExercisePage> {
   final List<Map<String, dynamic>> _newQuestions = [];
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
+  // 🔥 Categories
+  final List<String> _allCategories = [
+    'Math',
+    'Science',
+    'English',
+    'Programming',
+    'History',
+    'Geography',
+    'Physics',
+    'Chemistry',
+    'Biology',
+    'Economics',
+    'Arts',
+    'Music'
+  ];
+  final Set<String> _selectedCategories = {};
+  bool _isCategoryExpanded = false;
+  bool _showCategoryError = false;
+
   @override
   void initState() {
     super.initState();
@@ -36,7 +55,8 @@ class _EditExercisePageState extends State<EditExercisePage> {
     _fetchExerciseDetails();
     _fetchQuestions();
   }
-    Future<void> _fetchExerciseDetails() async {
+
+  Future<void> _fetchExerciseDetails() async {
     try {
       DocumentSnapshot exerciseDoc =
           await _firestore.collection('exercises').doc(widget.exerciseId).get();
@@ -45,6 +65,9 @@ class _EditExercisePageState extends State<EditExercisePage> {
         setState(() {
           _descriptionController.text =
               exerciseDoc['description'] ?? ''; // Load description
+          _selectedCategories.addAll(
+            List<String>.from(exerciseDoc['categories'] ?? []),
+          );
         });
       }
     } catch (e) {
@@ -135,6 +158,10 @@ class _EditExercisePageState extends State<EditExercisePage> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+      if (_selectedCategories.isEmpty) {
+      setState(() => _showCategoryError = true);
+      return;
+    }
 
     try {
       if (_titleController.text.isEmpty) {
@@ -161,6 +188,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
         'title': _titleController.text.trim(),
         'description': _descriptionController.text.trim(),
         'shared': _isShared,
+        'categories': _selectedCategories.toList(),
       });
 
       for (var question in _questions) {
@@ -297,6 +325,62 @@ class _EditExercisePageState extends State<EditExercisePage> {
     });
   }
 
+    Widget _buildCategorySelection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () =>
+              setState(() => _isCategoryExpanded = !_isCategoryExpanded),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Select Categories:',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Icon(_isCategoryExpanded
+                  ? Icons.keyboard_arrow_up
+                  : Icons.keyboard_arrow_down),
+            ],
+          ),
+        ),
+        if (_isCategoryExpanded)
+          Wrap(
+            spacing: 8,
+            //runSpacing: 1,
+            children: _allCategories.map((category) {
+              final isSelected = _selectedCategories.contains(category);
+              return ChoiceChip(
+                label: Text(category),
+                selected: isSelected,
+                selectedColor: Colors.blue,
+                labelStyle: TextStyle(
+                  color: isSelected ? Colors.white : Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+                onSelected: (selected) {
+                  setState(() {
+                    if (selected) {
+                      _selectedCategories.add(category);
+                    } else {
+                      _selectedCategories.remove(category);
+                    }
+                    _showCategoryError = _selectedCategories.isEmpty;
+                  });
+                },
+              );
+            }).toList(),
+          ),
+        if (_showCategoryError)
+          const Padding(
+            padding: EdgeInsets.only(top: 8.0),
+            child: Text(
+              'Please select at least one category!',
+              style: TextStyle(color: Colors.red, fontSize: 14),
+            ),
+          ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -367,6 +451,8 @@ class _EditExercisePageState extends State<EditExercisePage> {
                   ),
                 ],
               ),
+              const Divider(height: 24),
+              _buildCategorySelection(),
               const Divider(height: 24),
               ..._questions.map((question) => _buildQuestionTile(question)),
               ..._newQuestions

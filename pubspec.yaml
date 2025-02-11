@@ -45,6 +45,8 @@ dependencies:
   image_picker: ^1.1.2
   firebase_storage: ^12.4.1
   flutter_local_notifications: ^18.0.1
+  font_awesome_flutter: ^10.8.0
+  google_sign_in: ^6.2.2
 
 dev_dependencies:
   flutter_test:
@@ -72,6 +74,7 @@ flutter:
   assets:
       - assets/google_logo.png
       - assets/default_profile.png
+      - assets/ios_neutral_rd_na@4x.png
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

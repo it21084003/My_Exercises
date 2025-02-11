@@ -75,7 +75,7 @@ class _UserProfilePageState extends State<UserProfilePage>
       if (userDoc.exists) {
         setState(() {
           profileDescription = userDoc['description'] ?? 'No description';
-          profilePictureUrl = userDoc['profilePicture'] ?? null;
+          profilePictureUrl = userDoc['profilePicture'];
         });
       }
     } catch (e) {
@@ -215,27 +215,21 @@ class _UserProfilePageState extends State<UserProfilePage>
       // Check if the exercise is already forked
       if (forkedExercises.contains(exercise['id'])) {
         print("⚠️ Warning: Exercise already forked.");
-        // ScaffoldMessenger.of(context).showSnackBar(
-        //   const SnackBar(
-        //     content: Text('You have already forked this exercise!'),
-        //     backgroundColor: Colors.orange,
-        //   ),
-        // );
         return;
       }
 
-      // Optimistically update the state to reflect the change immediately
+      // Optimistically update the UI
       setState(() {
         forkedExercises.add(exercise['id']);
       });
 
-      // Update original exercise: Add user to 'forkedBy' array and increment 'downloadedCount'
+      // Update exercise in Firestore (increment download count)
       await exerciseRef.update({
         'forkedBy': FieldValue.arrayUnion([currentUser.uid]),
         'downloadedCount': FieldValue.increment(1), // Increment downloadedCount
       });
 
-      // Add forked exercise under the user's "forkedExercises"
+      // Store forked exercise under user's forked list
       await userForkedRef.doc(exercise['id']).set({
         'exerciseId': exercise['id'],
         'title': exercise['title'],
@@ -244,20 +238,13 @@ class _UserProfilePageState extends State<UserProfilePage>
         'creatorUsername': exercise['creatorUsername'],
         'timestamp': FieldValue.serverTimestamp(),
       });
-
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   const SnackBar(
-      //     content: Text('Exercise forked successfully!'),
-      //     backgroundColor: Colors.green,
-      //   ),
-      // );
     } catch (e) {
-      // Roll back the state if there's an error
+      // Roll back if there's an error
       setState(() {
         forkedExercises.remove(exercise['id']);
       });
 
-      print('Error forking exercise: $e');
+      print('❌ Error forking exercise: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: $e'),
@@ -422,11 +409,7 @@ class _UserProfilePageState extends State<UserProfilePage>
                                           ),
                                           onPressed: isForked
                                               ? null
-                                              : () {
-                                                  forkedExercises
-                                                      .add(exercise['id']);
-                                                  setState(() {});
-                                                },
+                                              : () => _forkExercise(exercise),
                                         ),
                                       );
                                     },

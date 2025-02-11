@@ -43,10 +43,10 @@ class _MenuScreenState extends State<MenuScreen> {
 
     // Restore previous search input and results from PageStorage
     _searchController.text = PageStorage.of(context)
-            ?.readState(context, identifier: "searchInput") ??
+            .readState(context, identifier: "searchInput") ??
         '';
     _searchResults = PageStorage.of(context)
-            ?.readState(context, identifier: "searchResults") ??
+            .readState(context, identifier: "searchResults") ??
         [];
   }
 
@@ -388,8 +388,8 @@ class _MenuScreenState extends State<MenuScreen> {
 
         // Save state in PageStorage
         PageStorage.of(context)
-            ?.writeState(context, _searchResults, identifier: "searchResults");
-        PageStorage.of(context)?.writeState(context, _searchController.text,
+            .writeState(context, _searchResults, identifier: "searchResults");
+        PageStorage.of(context).writeState(context, _searchController.text,
             identifier: "searchInput");
       });
     } catch (e) {

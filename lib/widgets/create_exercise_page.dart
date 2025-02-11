@@ -20,6 +20,24 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
   bool _isShared = false; // Default shared status
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool _showQuestionError = false; // To control red border for the button
+  bool _showCategoryError = false;
+
+  final List<String> _allCategories = [
+    'Math',
+    'Science',
+    'English',
+    'Programming',
+    'History',
+    'Geography',
+    'Physics',
+    'Chemistry',
+    'Biology',
+    'Economics',
+    'Arts',
+    'Music'
+  ];
+  final Set<String> _selectedCategories = {};
+  bool _isCategoryExpanded = false;
 
   void _addQuestion() {
     setState(() {
@@ -41,6 +59,13 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
       return;
     }
 
+    if (_selectedCategories.isEmpty) {
+      setState(() => _showCategoryError = true);
+      return;
+    } else {
+      setState(() => _showCategoryError = false);
+    }
+
     if (_questions.isEmpty) {
       setState(() {
         _showQuestionError = true; // Show red border on the button
@@ -58,10 +83,11 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
 
       final exerciseDoc = await _firestore.collection('exercises').add({
         'title': _titleController.text.trim(),
-        'description': _descriptionController.text.trim(), // Save description
+        'description': _descriptionController.text.trim(),
         'creatorId': user.uid,
         'creatorUsername': username,
         'shared': _isShared,
+        'categories': _selectedCategories.toList(), // 🔥 Now saving categories
         'timestamp': Timestamp.now(),
       });
 
@@ -89,7 +115,82 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
     }
   }
 
-  
+  Widget _buildCategorySelection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () =>
+              setState(() => _isCategoryExpanded = !_isCategoryExpanded),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Select Categories:',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Icon(_isCategoryExpanded
+                  ? Icons.keyboard_arrow_up
+                  : Icons.keyboard_arrow_down),
+            ],
+          ),
+        ),
+        if (_isCategoryExpanded)
+          Wrap(
+            spacing: 8,
+            //runSpacing: 8,
+            children: _allCategories.map((category) {
+              final isSelected = _selectedCategories.contains(category);
+              return ChoiceChip(
+                label: Text(category),
+                selected: isSelected,
+                selectedColor: Colors.blue,
+                labelStyle: TextStyle(
+                  color: isSelected ? Colors.white : Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+                onSelected: (selected) {
+                  setState(() {
+                    if (selected) {
+                      _selectedCategories.add(category);
+                    } else {
+                      _selectedCategories.remove(category);
+                    }
+                    _showCategoryError = _selectedCategories.isEmpty;
+                  });
+                },
+              );
+            }).toList(),
+          ),
+        if (_showCategoryError)
+          const Padding(
+            padding: EdgeInsets.only(top: 8.0),
+            child: Text(
+              'Please select at least one category!',
+              style: TextStyle(color: Colors.red, fontSize: 14),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildShareToggle() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          'Share Exercise',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        Switch(
+          value: _isShared,
+          onChanged: (value) {
+            setState(() {
+              _isShared = value;
+            });
+          },
+        ),
+      ],
+    );
+  }
 
   Widget _buildQuestionTile(Map<String, dynamic> question, int index) {
     return Card(
@@ -233,7 +334,9 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _descriptionController,
-                maxLines: 2,
+                maxLines: null, // 🔥 Allows auto-expanding
+                keyboardType:
+                    TextInputType.multiline, // 🔥 Enables multiline input
                 decoration: const InputDecoration(
                   labelText: 'Exercise Description',
                   border: OutlineInputBorder(),
@@ -245,25 +348,11 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Share Exercise',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  Switch(
-                    value: _isShared,
-                    onChanged: (value) {
-                      setState(() {
-                        _isShared = value;
-                      });
-                    },
-                  ),
-                ],
-              ),
-              const Divider(height: 24),
+              const SizedBox(height: 10),
+              _buildShareToggle(),
+              const Divider(height: 20),
+              _buildCategorySelection(),
+              const Divider(height: 20),
               ..._questions
                   .asMap()
                   .entries
