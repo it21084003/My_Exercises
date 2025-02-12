@@ -7,7 +7,7 @@ class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-    Future<void> unforkExercise(String exerciseId) async {
+  Future<void> unforkExercise(String exerciseId) async {
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
       throw Exception("No user is logged in.");
@@ -39,8 +39,7 @@ class FirestoreService {
 
     final userExercisesRef = _firestore
         .collection('exercises')
-        .where('creatorId', isEqualTo: currentUser.uid)
-        ;
+        .where('creatorId', isEqualTo: currentUser.uid);
 
     final forkedExercisesRef = _firestore
         .collection('users')
@@ -149,17 +148,34 @@ class FirestoreService {
     }
   }
 
-Future<List<Map<String, dynamic>>> fetchFilteredExercises({required String category}) async {
+  Future<List<Map<String, dynamic>>> fetchFilteredExercises({required String category}) async {
   try {
-    Query query = _firestore.collection('exercises')
-      .where('shared', isEqualTo: true) // ✅ Fetch only shared exercises
-      .orderBy('timestamp', descending: true); // ✅ Sort by newest
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return [];
 
-    if (category != "All") {
-      query = query.where('categories', arrayContains: category); // ✅ Filter by category
+    // 🔹 Fetch user's favorite categories
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    List<String> favoriteCategories = List<String>.from(userDoc['favoriteCategories'] ?? []);
+
+    if (favoriteCategories.isEmpty) return []; // No favorite categories, return empty list
+
+    QuerySnapshot querySnapshot;
+
+    if (category == "All") {
+      // 🔹 Show only exercises that match at least one of the user's favorite categories
+      querySnapshot = await FirebaseFirestore.instance
+          .collection('exercises')
+          .where('shared', isEqualTo: true) // ✅ Check if the exercise is shared
+          .where('categories', arrayContainsAny: favoriteCategories) // ✅ User's categories only
+          .get();
+    } else {
+      // 🔹 Show exercises for the selected category
+      querySnapshot = await FirebaseFirestore.instance
+          .collection('exercises')
+          .where('shared', isEqualTo: true) // ✅ Check if the exercise is shared
+          .where('categories', arrayContains: category)
+          .get();
     }
-
-    QuerySnapshot querySnapshot = await query.get();
 
     return querySnapshot.docs.map((doc) {
       return {
@@ -167,11 +183,13 @@ Future<List<Map<String, dynamic>>> fetchFilteredExercises({required String categ
         "title": doc["title"],
         "description": doc["description"],
         "creatorUsername": doc["creatorUsername"],
-        "categories": List<String>.from(doc["categories"] ?? []), // ✅ Ensure list format
+        "categories": List<String>.from(doc["categories"] ?? []),
+        "downloadedCount": doc["downloadedCount"] ?? 0,
+        "shared": doc["shared"] ?? false,
       };
     }).toList();
   } catch (e) {
-    print("❌ Error fetching shared exercises: $e");
+    print("❌ Error fetching exercises: $e");
     return [];
   }
 }

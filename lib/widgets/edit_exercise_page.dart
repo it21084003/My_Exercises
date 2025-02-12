@@ -158,7 +158,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-      if (_selectedCategories.isEmpty) {
+    if (_selectedCategories.isEmpty) {
       setState(() => _showCategoryError = true);
       return;
     }
@@ -325,7 +325,9 @@ class _EditExercisePageState extends State<EditExercisePage> {
     });
   }
 
-    Widget _buildCategorySelection() {
+  Widget _buildCategorySelection() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -346,16 +348,36 @@ class _EditExercisePageState extends State<EditExercisePage> {
         if (_isCategoryExpanded)
           Wrap(
             spacing: 8,
-            //runSpacing: 1,
             children: _allCategories.map((category) {
               final isSelected = _selectedCategories.contains(category);
               return ChoiceChip(
                 label: Text(category),
                 selected: isSelected,
-                selectedColor: Colors.blue,
+                selectedColor: isDarkMode
+                    ? Colors.purpleAccent
+                        .withOpacity(0.3) // Purple tint in dark mode
+                    : Colors.blue, // Blue in light mode
+                backgroundColor: isDarkMode
+                    ? Colors.grey[850] // Dark gray background in dark mode
+                    : Colors.grey[300], // Light gray background in light mode
                 labelStyle: TextStyle(
-                  color: isSelected ? Colors.white : Colors.black,
+                  color: isSelected
+                      ? Colors.white // White text when selected
+                      : (isDarkMode
+                          ? Colors.grey[400]
+                          : Colors.black), // Light gray in dark mode
                   fontWeight: FontWeight.bold,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(
+                    color: isSelected
+                        ? (isDarkMode ? Colors.purpleAccent : Colors.blue)
+                        : (isDarkMode ? Colors.grey[700]! : Colors.grey[400]!),
+                    width: isSelected
+                        ? 2
+                        : 1, // Slightly thicker border when selected
+                  ),
                 ),
                 onSelected: (selected) {
                   setState(() {
@@ -389,7 +411,8 @@ class _EditExercisePageState extends State<EditExercisePage> {
         title: const Text('Edit Exercise'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.red),
+            icon: const Icon(CupertinoIcons.trash,
+                color: Colors.redAccent, size: 22),
             onPressed: _deleteExercise,
           ),
           IconButton(
@@ -485,9 +508,16 @@ class _EditExercisePageState extends State<EditExercisePage> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.red),
-            onPressed: () => _deleteQuestion(question, isNew: isNew),
+          GestureDetector(
+            onTap: () => _deleteQuestion(question, isNew: isNew),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              child: const Icon(
+                CupertinoIcons.trash_fill, // Trash bin icon (more modern)
+                color: Colors.redAccent, // Vibrant red color
+                size: 22, // Slightly larger for better visibility
+              ),
+            ),
           ),
         ],
       ),
@@ -515,7 +545,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
               return null;
             },
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           TextFormField(
             initialValue: question['A'],
             maxLines: null,
@@ -531,7 +561,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
               return null;
             },
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           TextFormField(
             initialValue: question['B'],
             maxLines: null,
@@ -547,7 +577,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
               return null;
             },
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           TextFormField(
             initialValue: question['C'],
             maxLines: null,
@@ -563,7 +593,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
               return null;
             },
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           TextFormField(
             initialValue: question['D'],
             maxLines: null,
@@ -579,7 +609,7 @@ class _EditExercisePageState extends State<EditExercisePage> {
               return null;
             },
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           TextFormField(
             initialValue: question['correctAnswer'],
             maxLines: null,

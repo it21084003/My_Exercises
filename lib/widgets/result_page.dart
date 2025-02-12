@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/question_model.dart';
-import 'package:my_exercises/widgets/my_exercises_screen.dart';
 
 class ResultPage extends StatelessWidget {
   final List<Question> questions;

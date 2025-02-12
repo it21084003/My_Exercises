@@ -75,13 +75,12 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return WillPopScope(
-      onWillPop: () async => false, // Prevent accidental logout swipe
+      onWillPop: () async => false,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(10.0),
           child: Column(
             children: [
-              // 🔹 Title and Add Button in the Same Row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -95,16 +94,14 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
                   ),
                 ],
               ),
-
               const SizedBox(height: 10),
-
               Expanded(
                 child: StreamBuilder<List<Map<String, dynamic>>>(
                   stream: _firestoreService.streamUserExercises(),
                   builder: (context, snapshot) {
                     if (_isLoading) {
                       return const Center(
-                        child: CupertinoActivityIndicator(radius: 15), // ✅ iOS-style loading spinner
+                        child: CupertinoActivityIndicator(radius: 15),
                       );
                     }
 
@@ -137,6 +134,8 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
                         final bool isForked = exercise['isForked'] ?? false;
                         final originalCreator = exercise['creatorUsername'] ?? '';
                         final int downloadedCount = exercise['downloadedCount'] ?? 0;
+                        final List<String> exerciseCategories =
+                            List<String>.from(exercise["categories"] ?? []);
 
                         return Card(
                           elevation: 4,
@@ -145,81 +144,110 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
                             borderRadius: BorderRadius.circular(16.0),
                           ),
                           color: isDarkMode ? Colors.grey[900] : Colors.white,
-                          child: ListTile(
-                            title: Text(
-                              title,
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: isDarkMode ? Colors.white : Colors.black,
-                              ),
-                            ),
-                            subtitle: Column(
+                          child: Padding(
+                            padding: const EdgeInsets.all(1),
+                            child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  isForked ? 'Forked from: $originalCreator' : 'Created by you',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: isDarkMode ? Colors.white70 : Colors.black87,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  description,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: isDarkMode ? Colors.white70 : Colors.black87,
-                                  ),
-                                ),
-                                if (!isForked)
-                                  Text(
-                                    'Downloaded by: $downloadedCount users',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
+                                ListTile(
+                                  title: Text(
+                                    title,
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDarkMode ? Colors.white : Colors.black,
                                     ),
                                   ),
-                              ],
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (!isForked)
-                                  IconButton(
-                                    icon: const Icon(Icons.edit_note, color: Colors.blue),
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => EditExercisePage(
-                                            exerciseId: exerciseId,
-                                            title: title,
-                                            shared: exercise['shared'],
-                                          ),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        isForked
+                                            ? 'Forked from: $originalCreator'
+                                            : 'Created by you',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: isDarkMode ? Colors.white70 : Colors.black87,
                                         ),
-                                      ).then((_) => _fetchExercises());
-                                    },
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        description,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: isDarkMode ? Colors.white70 : Colors.black87,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+
+                                      // ✅ Category Tags UI
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 4,
+                                        children: exerciseCategories.map((category) {
+                                          return Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 5),
+                                            decoration: BoxDecoration(
+                                              color: Colors.blue.withOpacity(0.15),
+                                              borderRadius: BorderRadius.circular(16),
+                                              border:
+                                                  Border.all(color: Colors.blue, width: 1),
+                                            ),
+                                            child: Text(
+                                              category,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.blue,
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
+                                      const SizedBox(height: 6),
+
+                                      // ✅ Download Count UI
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.download,
+                                              size: 18, color: Colors.blue),
+                                          const SizedBox(width: 5),
+                                          Text(
+                                            _formatDownloadCount(downloadedCount),
+                                            style: const TextStyle(
+                                                fontSize: 14, color: Colors.blue),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
-                                if (isForked)
-                                  IconButton(
-                                    icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                                    onPressed: () => _unforkExercise(exerciseId!),
-                                  ),
+                                  trailing: isForked
+                                      ? IconButton(
+                                          icon: const Icon(Icons.remove_circle_outline,
+                                              color: Colors.red),
+                                          onPressed: () => _unforkExercise(exerciseId!),
+                                        )
+                                      : IconButton(
+                                          icon: const Icon(Icons.edit_note,
+                                              color: Colors.blue),
+                                          onPressed: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => EditExercisePage(
+                                                  exerciseId: exerciseId,
+                                                  title: title,
+                                                  shared: exercise['shared'],
+                                                ),
+                                              ),
+                                            ).then((_) => _fetchExercises());
+                                          },
+                                        ),
+                                  onTap: () => _navigateToHomeScreenDetail(context, exerciseId),
+                                ),
                               ],
                             ),
-                            onTap: () {
-                              if (exerciseId == null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Exercise ID is missing!'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                                return;
-                              }
-                              _navigateToHomeScreenDetail(context, exerciseId);
-                            },
                           ),
                         );
                       },
@@ -236,14 +264,21 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
 
   void _navigateToHomeScreenDetail(BuildContext context, String exerciseId) async {
     setState(() => _isLoading = true);
-
     await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => HomeScreenDetail(exerciseId: exerciseId),
       ),
     );
-
     _fetchExercises();
+  }
+
+  String _formatDownloadCount(int count) {
+    if (count >= 1000000) {
+      return count % 1000000 == 0 ? '${count ~/ 1000000}M' : '${(count / 1000000).toStringAsFixed(1)}M';
+    } else if (count >= 1000) {
+      return count % 1000 == 0 ? '${count ~/ 1000}K' : '${(count / 1000).toStringAsFixed(1)}K';
+    }
+    return count.toString();
   }
 }

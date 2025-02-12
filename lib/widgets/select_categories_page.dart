@@ -16,7 +16,7 @@ class _SelectCategoriesPageState extends State<SelectCategoriesPage> {
   final List<String> _categories = [
     'Math', 'Science', 'English', 'Programming', 'History',
     'Geography', 'Physics', 'Chemistry', 'Biology', 'Music',
-    'Art', 'Health', 'Sports', 'Technology', 'Finance'
+    'Arts', 'Health', 'Sports', 'Technology', 'Finance'
   ]; // **15 categories**
   
   final Set<String> _selectedCategories = {}; // Store selected categories

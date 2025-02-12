@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../data/auth_service.dart';
@@ -86,6 +87,7 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
         'description': _descriptionController.text.trim(),
         'creatorId': user.uid,
         'creatorUsername': username,
+        'downloadedCount': 0,
         'shared': _isShared,
         'categories': _selectedCategories.toList(), // 🔥 Now saving categories
         'timestamp': Timestamp.now(),
@@ -115,62 +117,79 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
     }
   }
 
-  Widget _buildCategorySelection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onTap: () =>
-              setState(() => _isCategoryExpanded = !_isCategoryExpanded),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Select Categories:',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              Icon(_isCategoryExpanded
-                  ? Icons.keyboard_arrow_up
-                  : Icons.keyboard_arrow_down),
-            ],
+ Widget _buildCategorySelection() {
+  final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      GestureDetector(
+        onTap: () => setState(() => _isCategoryExpanded = !_isCategoryExpanded),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Select Categories:',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Icon(_isCategoryExpanded
+                ? Icons.keyboard_arrow_up
+                : Icons.keyboard_arrow_down),
+          ],
+        ),
+      ),
+      if (_isCategoryExpanded)
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _allCategories.map((category) {
+            final isSelected = _selectedCategories.contains(category);
+            return ChoiceChip(
+              label: Text(category),
+              selected: isSelected,
+              selectedColor: isDarkMode
+                  ? Colors.purpleAccent.withOpacity(0.3) // Purple tint in dark mode
+                  : Colors.blue, // Blue in light mode
+              backgroundColor: isDarkMode
+                  ? Colors.grey[850] // Dark gray background in dark mode
+                  : Colors.grey[300], // Light gray background in light mode
+              labelStyle: TextStyle(
+                color: isSelected
+                    ? Colors.white // White text when selected
+                    : (isDarkMode ? Colors.grey[400] : Colors.black), // Light gray in dark mode
+                fontWeight: FontWeight.bold,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: isSelected
+                      ? (isDarkMode ? Colors.purpleAccent : Colors.blue)
+                      : (isDarkMode ? Colors.grey[700]! : Colors.grey[400]!),
+                  width: isSelected ? 2 : 1, // Slightly thicker border when selected
+                ),
+              ),
+              onSelected: (selected) {
+                setState(() {
+                  if (selected) {
+                    _selectedCategories.add(category);
+                  } else {
+                    _selectedCategories.remove(category);
+                  }
+                  _showCategoryError = _selectedCategories.isEmpty;
+                });
+              },
+            );
+          }).toList(),
+        ),
+      if (_showCategoryError)
+        const Padding(
+          padding: EdgeInsets.only(top: 8.0),
+          child: Text(
+            'Please select at least one category!',
+            style: TextStyle(color: Colors.red, fontSize: 14),
           ),
         ),
-        if (_isCategoryExpanded)
-          Wrap(
-            spacing: 8,
-            //runSpacing: 8,
-            children: _allCategories.map((category) {
-              final isSelected = _selectedCategories.contains(category);
-              return ChoiceChip(
-                label: Text(category),
-                selected: isSelected,
-                selectedColor: Colors.blue,
-                labelStyle: TextStyle(
-                  color: isSelected ? Colors.white : Colors.black,
-                  fontWeight: FontWeight.bold,
-                ),
-                onSelected: (selected) {
-                  setState(() {
-                    if (selected) {
-                      _selectedCategories.add(category);
-                    } else {
-                      _selectedCategories.remove(category);
-                    }
-                    _showCategoryError = _selectedCategories.isEmpty;
-                  });
-                },
-              );
-            }).toList(),
-          ),
-        if (_showCategoryError)
-          const Padding(
-            padding: EdgeInsets.only(top: 8.0),
-            child: Text(
-              'Please select at least one category!',
-              style: TextStyle(color: Colors.red, fontSize: 14),
-            ),
-          ),
-      ],
-    );
-  }
+    ],
+  );
+}
 
   Widget _buildShareToggle() {
     return Row(
@@ -212,7 +231,7 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
+              icon: const Icon(CupertinoIcons.trash, color: Colors.redAccent, size: 22),
               onPressed: () {
                 setState(() {
                   _questions.removeAt(index);
@@ -307,7 +326,7 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
         title: const Text('Create Exercise'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.save),
+            icon: const Icon(Icons.save_alt_outlined),
             onPressed: _saveExercise,
           ),
         ],

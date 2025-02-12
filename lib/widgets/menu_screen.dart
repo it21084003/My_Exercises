@@ -131,39 +131,7 @@ class _MenuScreenState extends State<MenuScreen> {
     }
   }
 
-  Future<void> _updateUsername() async {
-    if (_usernameController.text.trim().isEmpty) return;
 
-    User? user = _auth.currentUser;
-    if (user != null) {
-      try {
-        final newUsername = _usernameController.text.trim();
-
-        // Update the username in the 'users' collection
-        await _firestore.collection('users').doc(user.uid).update({
-          'username': newUsername,
-        });
-
-        // Update the 'Created by' field in exercises created by the user
-        QuerySnapshot userExercises = await _firestore
-            .collection('exercises')
-            .where('creatorId', isEqualTo: user.email)
-            .get();
-
-        for (var exercise in userExercises.docs) {
-          await _firestore.collection('exercises').doc(exercise.id).update({
-            'creatorUsername': newUsername,
-          });
-        }
-
-        setState(() {
-          _username = newUsername;
-        });
-      } catch (e) {
-        print('Error updating username: $e');
-      }
-    }
-  }
 
   void _openSettingsMenu() {
     showCupertinoModalPopup(
@@ -452,7 +420,7 @@ class _MenuScreenState extends State<MenuScreen> {
       body: PageStorage(
         bucket: _bucket, // Use the bucket for PageStorage
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(10.0),
           child: Column(
             children: [
               // Custom Top Bar
