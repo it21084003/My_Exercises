@@ -181,7 +181,7 @@ void _showCategoryPicker() {
               },
               child: Text(category, style: const TextStyle(fontSize: 18)),
             );
-          }).toList(),
+          }),
           
           // 🔹 Add "Manage Categories" option
           // 🔹 Modify the function call inside _showCategoryPicker
@@ -340,7 +340,7 @@ void _showManageCategoriesDialog(bool isDarkMode) {
                     borderRadius: BorderRadius.circular(14),
                     color: isDarkMode
                         ? const Color(0xFF9B51E0) // 🔥 Beautiful Dark Mode Purple
-                        : const Color(0xFFD8BFD8), // 🎨 Light Lavender in Light Mode
+                        : const Color.fromARGB(255, 163, 95, 163), // 🎨 Light Lavender in Light Mode
                     disabledColor: Colors.grey, // Disabled state
                     onPressed: () async {
                       await _updateCategories(selectedCategories);
@@ -371,6 +371,8 @@ Widget _buildExerciseCard(Map<String, dynamic> exercise, bool isDarkMode) {
   List<String> exerciseCategories = List<String>.from(exercise["categories"] ?? []);
   int downloadCount = exercise["downloadedCount"] ?? 0;
   String creatorUsername = exercise["creatorUsername"] ?? "Unknown";
+  String timeAgo = exercise["timestamp"] ?? "Unknown"; 
+
 
   return Card(
     elevation: 4,
@@ -442,6 +444,14 @@ Widget _buildExerciseCard(Map<String, dynamic> exercise, bool isDarkMode) {
                           Text(
                             _formatDownloadCount(downloadCount),
                             style: const TextStyle(fontSize: 14, color: Colors.blue),
+                          ),
+                          const SizedBox(width: 15),
+                          Text(
+                            "$timeAgo",
+                            style: TextStyle(
+                            fontSize: 14,
+                            color: isDarkMode ? Colors.white70 : Colors.grey,
+                          ),
                           ),
                         ],
                       ),

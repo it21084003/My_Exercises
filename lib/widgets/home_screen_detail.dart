@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../data/firestore_service.dart';
 import '../screens/exercise_page.dart';
 
@@ -18,6 +20,7 @@ class _HomeScreenDetailState extends State<HomeScreenDetail> {
   String _description = "Fetching details...";
   int _questionCount = 0;
   bool _isLoading = true;
+  bool _isForked = false; // Track if exercise is forked
 
   @override
   void initState() {
@@ -30,12 +33,24 @@ class _HomeScreenDetailState extends State<HomeScreenDetail> {
       final exercise = await _firestoreService.getExerciseById(widget.exerciseId);
       if (exercise != null) {
         final questions = await _firestoreService.fetchExerciseQuestions(widget.exerciseId);
-        setState(() {
-          _title = exercise['title'] ?? "Untitled Exercise";
-          _description = exercise['description'] ?? "No description available.";
-          _questionCount = questions.length;
-          _isLoading = false;
-        });
+        final currentUser = FirebaseAuth.instance.currentUser;
+
+        if (currentUser != null) {
+          DocumentSnapshot userForkedExercise = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser.uid)
+              .collection('forkedExercises')
+              .doc(widget.exerciseId)
+              .get();
+
+          setState(() {
+            _title = exercise['title'] ?? "Untitled Exercise";
+            _description = exercise['description'] ?? "No description available.";
+            _questionCount = questions.length;
+            _isForked = userForkedExercise.exists; // Check if already forked
+            _isLoading = false;
+          });
+        }
       } else {
         setState(() {
           _title = "Exercise Not Found";
@@ -54,6 +69,42 @@ class _HomeScreenDetailState extends State<HomeScreenDetail> {
     }
   }
 
+  Future<void> _forkExercise() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('forkedExercises')
+          .doc(widget.exerciseId)
+          .set({
+        'exerciseId': widget.exerciseId,
+        'title': _title,
+        'description': _description,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      await FirebaseFirestore.instance.collection('exercises').doc(widget.exerciseId).update({
+        'forkedBy': FieldValue.arrayUnion([currentUser.uid]),
+        'downloadedCount': FieldValue.increment(1), // Increment download count
+      });
+
+      setState(() {
+        _isForked = true;
+      });
+
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(content: Text("Exercise forked successfully!"), backgroundColor: Colors.green),
+      // );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error forking exercise: $e"), backgroundColor: Colors.red),
+      );
+    }
+  }
+
   void _confirmStartExam() {
     showCupertinoDialog(
       context: context,
@@ -63,13 +114,13 @@ class _HomeScreenDetailState extends State<HomeScreenDetail> {
         actions: [
           CupertinoDialogAction(
             child: const Text("Cancel"),
-            onPressed: () => Navigator.of(context).pop(), // Close popup
+            onPressed: () => Navigator.of(context).pop(),
           ),
           CupertinoDialogAction(
             isDefaultAction: true,
             child: const Text("Start"),
             onPressed: () {
-              Navigator.of(context).pop(); // Close popup
+              Navigator.of(context).pop();
               _startExam();
             },
           ),
@@ -94,12 +145,22 @@ class _HomeScreenDetailState extends State<HomeScreenDetail> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDarkMode ? Colors.black : Colors.white, 
+      backgroundColor: isDarkMode ? Colors.black : Colors.white,
       appBar: AppBar(
         title: Text(_title, style: TextStyle(color: isDarkMode ? Colors.white : Colors.black)),
         backgroundColor: isDarkMode ? Colors.black : Colors.white,
         foregroundColor: isDarkMode ? Colors.white : Colors.black,
         elevation: 2,
+        actions: [
+          // Fork Button
+          IconButton(
+            icon: Icon(
+              _isForked ? Icons.check_circle : Icons.download_for_offline,
+              color: _isForked ? Colors.green : Colors.blue,
+            ),
+            onPressed: _isForked ? null : _forkExercise,
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -107,7 +168,7 @@ class _HomeScreenDetailState extends State<HomeScreenDetail> {
           children: [
             // Exam Info Card
             Card(
-              color: isDarkMode ? Colors.grey[900] : Colors.grey[200], 
+              color: isDarkMode ? Colors.grey[900] : Colors.grey[200],
               elevation: 3,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
@@ -157,7 +218,7 @@ class _HomeScreenDetailState extends State<HomeScreenDetail> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isDarkMode ? Colors.deepOrange : Colors.orange, 
+                  backgroundColor: isDarkMode ? Colors.deepOrange : Colors.orange,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -168,7 +229,7 @@ class _HomeScreenDetailState extends State<HomeScreenDetail> {
                   'Start Exam',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
-                onPressed: _confirmStartExam, // Shows Confirmation First
+                onPressed: _confirmStartExam,
               ),
             ),
           ],

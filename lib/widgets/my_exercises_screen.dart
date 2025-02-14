@@ -27,9 +27,23 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
     setState(() => _isLoading = true);
     try {
       final exercises = await _firestoreService.fetchUserExercises();
+
+      // ✅ Filter out forked exercises where `shared` is now `false`
+      List<Map<String, dynamic>> filteredExercises = [];
+      for (var exercise in exercises) {
+        if (exercise['isForked'] == true) {
+          final originalExercise = await _firestoreService.getExerciseById(exercise['exerciseId']);
+          if (originalExercise == null || originalExercise['shared'] == false) {
+            // 🔥 Skip this exercise (it was unshared)
+            continue;
+          }
+        }
+        filteredExercises.add(exercise);
+      }
+
       if (mounted) {
         setState(() {
-          _exercises = exercises;
+          _exercises = filteredExercises;
           _isLoading = false;
         });
       }
@@ -180,7 +194,6 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
                                       ),
                                       const SizedBox(height: 6),
 
-                                      // ✅ Category Tags UI
                                       Wrap(
                                         spacing: 6,
                                         runSpacing: 4,
@@ -207,7 +220,6 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
                                       ),
                                       const SizedBox(height: 6),
 
-                                      // ✅ Download Count UI
                                       Row(
                                         children: [
                                           const Icon(Icons.download,
@@ -261,6 +273,8 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
       ),
     );
   }
+
+
 
   void _navigateToHomeScreenDetail(BuildContext context, String exerciseId) async {
     setState(() => _isLoading = true);

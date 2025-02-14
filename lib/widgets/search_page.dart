@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:my_exercises/widgets/home_screen_detail.dart';
 import '../screens/exercise_page.dart';
 
 class SearchPage extends StatefulWidget {
@@ -85,7 +86,7 @@ class _SearchPageState extends State<SearchPage> {
     return Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(10.0),
           child: Column(
             children: [
               Row(
@@ -100,9 +101,7 @@ class _SearchPageState extends State<SearchPage> {
                     child: Container(
                       height: 40,
                       decoration: BoxDecoration(
-                        color: isDarkMode
-                            ? Colors.grey[800]
-                            : Colors.grey[200], // Adjust color for dark mode
+                        color: isDarkMode ? Colors.grey[900] : Colors.grey[200],
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -114,18 +113,15 @@ class _SearchPageState extends State<SearchPage> {
                               decoration: InputDecoration(
                                 hintText: "Search exercises...",
                                 hintStyle: TextStyle(
-                                  color: isDarkMode
-                                      ? Colors.grey[400]
-                                      : Colors.grey[600], // Adjust hint text color
+                                  color:
+                                      isDarkMode ? Colors.grey[400] : Colors.grey[600],
                                 ),
                                 border: InputBorder.none,
                                 contentPadding: const EdgeInsets.symmetric(vertical: 10),
                               ),
                               style: TextStyle(
                                 fontSize: 16,
-                                color: isDarkMode
-                                    ? Colors.white
-                                    : Colors.black, // Adjust input text color
+                                color: isDarkMode ? Colors.white : Colors.black,
                               ),
                               textAlignVertical: TextAlignVertical.center,
                               onSubmitted: _searchExercises,
@@ -151,67 +147,162 @@ class _SearchPageState extends State<SearchPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              if (_isLoading) const Center(child: CircularProgressIndicator()),
-              if (!_isLoading && !_hasSearched)
-                const Center(
-                  child: Text(
-                    "Search for an exercise...",
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                ),
-              if (!_isLoading && _hasSearched && _searchResults.isEmpty)
-                const Center(
-                  child: Text(
-                    "No results found.",
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                ),
-              if (!_isLoading && _searchResults.isNotEmpty)
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: _searchResults.length,
-                    itemBuilder: (context, index) {
-                      final result = _searchResults[index];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 8.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                        ),
-                        child: ListTile(
-                          title: Text(
-                            result['title'] ?? 'Untitled Exercise',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+              const SizedBox(height: 10),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _hasSearched && _searchResults.isEmpty
+                        ? const Center(
+                            child: Text(
+                              "No results found.",
+                              style: TextStyle(fontSize: 16, color: Colors.grey),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: _searchResults.length,
+                            itemBuilder: (context, index) {
+                              final exercise = _searchResults[index];
+                              return _buildExerciseCard(exercise, isDarkMode);
+                            },
                           ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(result['description'] ?? 'No description'),
-                              Text(
-                                'Created by: ${result['creatorUsername'] ?? 'Unknown User'}',
-                                style: TextStyle(color: Colors.grey[600]),
-                              ),
-                            ],
-                          ),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ExercisePage(
-                                  exerciseNumber: result['exerciseId'],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                ),
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildExerciseCard(Map<String, dynamic> exercise, bool isDarkMode) {
+    List<String> exerciseCategories = List<String>.from(exercise["categories"] ?? []);
+    int downloadCount = exercise["downloadedCount"] ?? 0;
+    String creatorUsername = exercise["creatorUsername"] ?? "Unknown";
+
+    return Card(
+      elevation: 4,
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16.0),
+      ),
+      color: isDarkMode ? Colors.grey[900] : Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              title: Text(
+                exercise['title'] ?? 'Untitled Exercise',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : Colors.black,
+                ),
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    exercise['description'] ?? 'No description.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDarkMode ? Colors.white70 : Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+
+                  // ✅ Updated Category Tags
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: exerciseCategories.map((category) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.blue, width: 1),
+                        ),
+                        child: Text(
+                          category,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  // ✅ Row for Download Count & Username (Matches HomeScreen)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              const Icon(Icons.download, size: 18, color: Colors.blue),
+                              const SizedBox(width: 5),
+                              Text(
+                                _formatDownloadCount(downloadCount),
+                                style: const TextStyle(fontSize: 14, color: Colors.blue),
+                              ),
+
+                              
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              "By: $creatorUsername",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: isDarkMode ? Colors.white70 : Colors.grey,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              onTap: () {
+              if (exercise['exerciseId'] == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Exercise ID is missing!'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => HomeScreenDetail(
+                    exerciseId: exercise['exerciseId'],
+                  ),
+                ),
+              );
+            },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDownloadCount(int count) {
+    if (count >= 1000000) return '${(count / 1000000).toStringAsFixed(1)}M';
+    if (count >= 1000) return '${(count / 1000).toStringAsFixed(1)}K';
+    return count.toString();
   }
 }

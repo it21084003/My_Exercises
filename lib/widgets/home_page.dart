@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'home_screen.dart';
 import 'my_exercises_screen.dart';
 import 'menu_screen.dart';
@@ -27,33 +28,24 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       body: SafeArea(
-        child:
-            _pages[_selectedIndex], // Ensure content respects system UI areas
+        child: _pages[_selectedIndex],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.book),
-            label: 'My Exercises',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Menu',
-          ),
-        ],
-        currentIndex: _selectedIndex,
+      bottomNavigationBar: CurvedNavigationBar(
+        backgroundColor: isDarkMode ? Colors.black : Colors.white, // Dynamic BG Color
+        color:  Colors.blueAccent, // Navbar Color
+        height: 60,
+        animationDuration: const Duration(milliseconds: 300),
+        index: _selectedIndex,
         onTap: _onItemTapped,
-        selectedFontSize: 10, // Adjust font size for selected item
-        unselectedFontSize: 10, // Adjust font size for unselected items
-        iconSize: 18, // Adjust icon size
-        type: BottomNavigationBarType.fixed, // Ensure consistent layout
+        items: [
+          Icon(Icons.home, color: isDarkMode ? Colors.black : Colors.white, size: 30),
+          Icon(Icons.book, color: isDarkMode ? Colors.black : Colors.white, size: 30),
+          Icon(Icons.person, color: isDarkMode ? Colors.black : Colors.white, size: 30),
+        ],
       ),
     );
   }
