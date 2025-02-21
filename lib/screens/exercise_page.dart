@@ -237,22 +237,24 @@ class _ExercisePageState extends State<ExercisePage> with AutomaticKeepAliveClie
     );
   }
 
-  void _navigateToResultPage() {
-    _questionsFuture.then((questions) {
-      if (_isMounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ResultPage(
-              questions: questions,
-              selectedAnswers: _selectedAnswers,
-              timeTaken: _elapsedTime,
-            ),
+ // exercise_page.dart (snippet)
+void _navigateToResultPage() {
+  _questionsFuture.then((questions) {
+    if (_isMounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ResultPage(
+            questions: questions,
+            selectedAnswers: _selectedAnswers,
+            timeTaken: _elapsedTime,
+            exerciseId: widget.exerciseNumber, 
           ),
-        );
-      }
-    });
-  }
+        ),
+      );
+    }
+  });
+}
 
   @override
   bool get wantKeepAlive => true;

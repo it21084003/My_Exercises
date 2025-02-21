@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
+import 'package:my_exercises/widgets/my_exercises.dart';
 import 'home_screen.dart';
-import 'my_exercises_screen.dart';
+//import 'my_exercises_screen.dart';
 import 'menu_screen.dart';
 
 class HomePage extends StatefulWidget {
@@ -16,7 +17,7 @@ class _HomePageState extends State<HomePage> {
 
   final List<Widget> _pages = const [
     HomeScreen(),
-    MyExercisesPage(),
+    MyExercises(),
     MenuScreen(),
   ];
 

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:my_exercises/widgets/edit_exercise_page.dart';
 import 'package:my_exercises/widgets/home_screen_detail.dart';
 import '../data/firestore_service.dart';
@@ -31,6 +33,7 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
       // ✅ Filter out forked exercises where `shared` is now `false`
       List<Map<String, dynamic>> filteredExercises = [];
       for (var exercise in exercises) {
+        debugPrint("Processing exercise ${exercise['exerciseId']}: downloadedCount = ${exercise['downloadedCount'] ?? 0}");
         if (exercise['isForked'] == true) {
           final originalExercise = await _firestoreService.getExerciseById(exercise['exerciseId']);
           if (originalExercise == null || originalExercise['shared'] == false) {
@@ -38,13 +41,23 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
             continue;
           }
         }
-        filteredExercises.add(exercise);
+        filteredExercises.add({
+          'exerciseId': exercise['exerciseId'],
+          'title': exercise['title'] ?? 'Untitled Exercise',
+          'description': exercise['description'] ?? 'No description.',
+          'isForked': exercise['isForked'] ?? false,
+          'creatorUsername': exercise['creatorUsername'] ?? '',
+          'downloadedCount': exercise['downloadedCount'] ?? 0, // Ensure downloadedCount is included
+          'categories': List<String>.from(exercise['categories'] ?? []),
+          'shared': exercise['shared'] ?? false,
+        });
       }
 
       if (mounted) {
         setState(() {
           _exercises = filteredExercises;
           _isLoading = false;
+          debugPrint("Updated exercises: $_exercises");
         });
       }
     } catch (e) {
@@ -88,9 +101,10 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return WillPopScope(
-      onWillPop: () async => false,
-      child: SafeArea(
+    return Scaffold(
+      // Set background color based on theme
+      backgroundColor: isDarkMode ? Colors.black : Colors.white,
+      body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(10.0),
           child: Column(
@@ -98,9 +112,15 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  // Fix "My Exercises" label to remove yellow underline
+                  Text(
                     "My Exercises",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                      decoration: TextDecoration.none, // Explicitly remove any underline
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.add, size: 28, color: Colors.blue),
@@ -148,8 +168,9 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
                         final bool isForked = exercise['isForked'] ?? false;
                         final originalCreator = exercise['creatorUsername'] ?? '';
                         final int downloadedCount = exercise['downloadedCount'] ?? 0;
-                        final List<String> exerciseCategories =
-                            List<String>.from(exercise["categories"] ?? []);
+                        final List<String> exerciseCategories = List<String>.from(exercise["categories"] ?? []);
+
+                        debugPrint("Building card for exercise ${exerciseId}: downloadedCount = $downloadedCount");
 
                         return Card(
                           elevation: 4,
@@ -204,8 +225,7 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
                                             decoration: BoxDecoration(
                                               color: Colors.blue.withOpacity(0.15),
                                               borderRadius: BorderRadius.circular(16),
-                                              border:
-                                                  Border.all(color: Colors.blue, width: 1),
+                                              border: Border.all(color: Colors.blue, width: 1),
                                             ),
                                             child: Text(
                                               category,
@@ -274,8 +294,6 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
     );
   }
 
-
-
   void _navigateToHomeScreenDetail(BuildContext context, String exerciseId) async {
     setState(() => _isLoading = true);
     await Navigator.push(
@@ -288,6 +306,7 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
   }
 
   String _formatDownloadCount(int count) {
+    debugPrint("Formatting download count: $count");
     if (count >= 1000000) {
       return count % 1000000 == 0 ? '${count ~/ 1000000}M' : '${(count / 1000000).toStringAsFixed(1)}M';
     } else if (count >= 1000) {

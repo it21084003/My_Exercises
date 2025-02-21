@@ -1,7 +1,9 @@
+// widgets/select_categories_page.dart
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class SelectCategoriesPage extends StatefulWidget {
   final VoidCallback onCategoriesSelected;
@@ -18,11 +20,11 @@ class _SelectCategoriesPageState extends State<SelectCategoriesPage> {
     'Geography', 'Physics', 'Chemistry', 'Biology', 'Music',
     'Arts', 'Health', 'Sports', 'Technology', 'Finance'
   ]; // **15 categories**
-  
+
   final Set<String> _selectedCategories = {}; // Store selected categories
   bool _isSaving = false; // Track saving process
 
-  void _saveFavoriteCategories() async {
+  Future<void> _saveFavoriteCategories() async {
     if (_selectedCategories.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please select at least one category.")),
@@ -37,26 +39,29 @@ class _SelectCategoriesPageState extends State<SelectCategoriesPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        print("🚀 Saving categories to Firestore...");
+        print("🚀 Saving categories and FCM token to Firestore...");
+
+        // Get FCM Token
+        String? fcmToken = await FirebaseMessaging.instance.getToken();
 
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
           {
             'favoriteCategories': _selectedCategories.toList(),
             'firstTimeLogin': false, // ✅ Mark first login as completed
+            'fcmToken': fcmToken, // Store FCM token for notifications
           },
-          SetOptions(merge: true),
+          SetOptions(merge: true), // Merge with existing data
         );
 
-        print("✅ Categories successfully saved to Firestore!");
+        print("✅ Categories and FCM token saved successfully!");
 
         if (mounted) {
-          // ✅ 🚀 Directly Navigate to HomePage After Saving
-          Navigator.pushReplacementNamed(context, '/home');
+          widget.onCategoriesSelected(); // Call the callback to navigate
         }
       } catch (e) {
         print("❌ Error saving categories: $e");
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to save categories. Try again.")),
+          SnackBar(content: Text("Failed to save categories. Error: $e")),
         );
       }
     } else {
@@ -135,7 +140,7 @@ class _SelectCategoriesPageState extends State<SelectCategoriesPage> {
             borderRadius: BorderRadius.circular(14),
             onPressed: _isSaving || _selectedCategories.isEmpty
                 ? null
-                : _saveFavoriteCategories, // Disable while saving
+                : _saveFavoriteCategories, // Disable while saving or no selection
             child: _isSaving
                 ? const CupertinoActivityIndicator() // Show loading spinner
                 : const Text(

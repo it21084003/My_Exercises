@@ -404,6 +404,26 @@ class _EditExercisePageState extends State<EditExercisePage> {
     );
   }
 
+  Widget _buildShareToggle() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          'Share Exercise',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        Switch(
+          value: _isShared,
+          onChanged: (value) {
+            setState(() {
+              _isShared = value;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../data/auth_service.dart';
+import 'package:my_exercises/data/auth_service.dart';
 
 class CreateExercisePage extends StatefulWidget {
   const CreateExercisePage({super.key});

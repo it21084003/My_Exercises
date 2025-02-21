@@ -21,10 +21,13 @@ class _MenuScreenState extends State<MenuScreen> {
 
   String _username = "";
   String? profileDescription = "";
+  int _points = 0;
+  String _level = "Beginner";
+  List<String> _badges = [];
   bool _isLoading = true;
+
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
-
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _searchResults = [];
   Set<String> _following = {}; // To track users the current user is following
@@ -40,7 +43,6 @@ class _MenuScreenState extends State<MenuScreen> {
     _fetchUserData();
     _fetchFollowing();
     _fetchCounts(); // Fetch count for followers & following
-
     // Restore previous search input and results from PageStorage
     _searchController.text = PageStorage.of(context)
             .readState(context, identifier: "searchInput") ??
@@ -56,29 +58,29 @@ class _MenuScreenState extends State<MenuScreen> {
     _fetchUserData(); // Re-fetch user data when returning to the screen
   }
 
-  Future<void> _fetchUserData() async {
+Future<void> _fetchUserData() async {
     User? user = _auth.currentUser;
     if (user != null) {
       try {
-        DocumentSnapshot userDoc =
-            await _firestore.collection('users').doc(user.uid).get();
+        DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
         if (userDoc.exists) {
           setState(() {
             _username = userDoc['username'] ?? "Unknown User";
             profileDescription = userDoc['description'] ?? 'No description';
+            _points = userDoc['points'] ?? 0;
+            _level = userDoc['level'] ?? 'Beginner';
+            _badges = List<String>.from(userDoc['badges'] ?? []);
             _usernameController.text = _username;
-            _descriptionController.text =
-                profileDescription ?? ''; // Populate the description controller
+            _descriptionController.text = profileDescription ?? '';
             _isLoading = false;
           });
         }
       } catch (e) {
         setState(() {
           _username = "Error loading name";
-          profileDescription = "Error loading description";
           _isLoading = false;
         });
-        print("Error fetching username: $e");
+        print("Error fetching user data: $e");
       }
     }
   }
@@ -418,84 +420,77 @@ class _MenuScreenState extends State<MenuScreen> {
 
     return Scaffold(
       body: PageStorage(
-        bucket: _bucket, // Use the bucket for PageStorage
+        bucket: _bucket,
         child: Padding(
           padding: const EdgeInsets.all(10.0),
           child: Column(
             children: [
-              // Custom Top Bar
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    "Menu",
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  const Text("Menu", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                   IconButton(
-                    icon: Icon(
-                      Icons.settings,
-                      color: isDarkMode ? Colors.grey : Colors.black,
-                    ),
+                    icon: Icon(Icons.settings, color: isDarkMode ? Colors.grey : Colors.black),
                     onPressed: _openSettingsMenu,
                   ),
                 ],
               ),
               const SizedBox(height: 20),
-
-              // Profile Card
               Card(
                 elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: Container(
                   padding: const EdgeInsets.all(16.0),
                   width: double.infinity,
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Profile Picture
-                      const CircleAvatar(
-                        radius: 25,
-                        backgroundColor: Colors.blue,
-                        child:
-                            Icon(Icons.person, size: 25, color: Colors.white),
-                      ),
-                      const SizedBox(width: 16),
-
-                      // Username Field
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _username,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
+                      Row(
+                        children: [
+                          const CircleAvatar(
+                            radius: 25,
+                            backgroundColor: Colors.blue,
+                            child: Icon(Icons.person, size: 25, color: Colors.white),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _username,
+                                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  profileDescription ?? 'No description available',
+                                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              profileDescription ??
-                                  'No description available', // Dynamically show the description
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
+                      const SizedBox(height: 10),
+                      // Gamification Section
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Points: $_points', style: const TextStyle(fontSize: 16)),
+                          Text('Level: $_level', style: const TextStyle(fontSize: 16)),
+                        ],
+                      ),
+                      // const SizedBox(height: 5),
+                      // const Text('Badges:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      // Wrap(
+                      //   spacing: 8,
+                      //   children: _badges.isEmpty
+                      //       ? [const Text('No badges yet', style: TextStyle(color: Colors.grey))]
+                      //       : _badges.map((badge) => Chip(label: Text(badge))).toList(),
+                      // ),
                     ],
                   ),
                 ),
               ),
-
-              // Add Followers/Following Buttons
-              // UI for the buttons with count
               Padding(
                 padding: const EdgeInsets.only(top: 10.0),
                 child: Row(
@@ -504,9 +499,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                         ),
                         icon: const Icon(Icons.people, size: 20),
                         label: Text('Followers $_followersCount'),
@@ -514,22 +507,18 @@ class _MenuScreenState extends State<MenuScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => FollowersPage(
-                                currentUserId: _auth.currentUser?.uid ?? '',
-                              ),
+                              builder: (context) => FollowersPage(currentUserId: _auth.currentUser?.uid ?? ''),
                             ),
                           );
                         },
                       ),
                     ),
-                    const SizedBox(width: 10), // Space between buttons
+                    const SizedBox(width: 10),
                     Expanded(
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                         ),
                         icon: const Icon(Icons.person_add, size: 20),
                         label: Text('Following $_followingCount'),
@@ -537,9 +526,7 @@ class _MenuScreenState extends State<MenuScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => FollowingPage(
-                                currentUserId: _auth.currentUser?.uid ?? '',
-                              ),
+                              builder: (context) => FollowingPage(currentUserId: _auth.currentUser?.uid ?? ''),
                             ),
                           );
                         },
@@ -548,49 +535,34 @@ class _MenuScreenState extends State<MenuScreen> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 10),
-
-              // Search People
               CupertinoTextField(
                 controller: _searchController,
                 placeholder: "Search people by username",
-                style: TextStyle(
-                  color: isDarkMode
-                      ? Colors.white
-                      : Colors.black, // Adjust text color for dark mode
-                ),
-                onSubmitted: (_) =>
-                    _searchPeople(), // Trigger search on Enter key
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                onSubmitted: (_) => _searchPeople(),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 suffix: _searchController.text.isNotEmpty
                     ? CupertinoButton(
                         padding: EdgeInsets.zero,
                         onPressed: () {
                           setState(() {
                             _searchController.clear();
-                            _searchResults
-                                .clear(); // Clear search results when input is cleared
+                            _searchResults.clear();
                           });
                         },
-                        child: const Icon(CupertinoIcons.clear,
-                            color: Colors.grey),
+                        child: const Icon(CupertinoIcons.clear, color: Colors.grey),
                       )
-                    : null, // Show clear icon only if input is not empty
+                    : null,
               ),
               const SizedBox(height: 20),
-
-              // Search Results
               Expanded(
                 child: ListView.builder(
-                  key: const PageStorageKey(
-                      'searchResultsList'), // Add a PageStorageKey
+                  key: const PageStorageKey('searchResultsList'),
                   itemCount: _searchResults.length,
                   itemBuilder: (context, index) {
                     final user = _searchResults[index];
                     final isFollowing = _following.contains(user['uid']);
-
                     return ListTile(
                       leading: const CircleAvatar(
                         backgroundColor: Colors.blue,
@@ -609,8 +581,7 @@ class _MenuScreenState extends State<MenuScreen> {
                           ),
                         ),
                       ),
-                      onTap: () =>
-                          _viewUserProfile(user['uid'], user['username']),
+                      onTap: () => _viewUserProfile(user['uid'], user['username']),
                     );
                   },
                 ),

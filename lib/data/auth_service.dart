@@ -57,34 +57,38 @@ class AuthService {
     }
   }
 
-  // Register New User
-  Future<bool> register(String email, String password, String userName) async {
-    try {
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      User? user = userCredential.user;
+ // auth_service.dart
+Future<bool> register(String email, String password, String userName) async {
+  try {
+    UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+    User? user = userCredential.user;
 
-      if (user != null) {
-        await _firestore.collection('users').doc(user.uid).set({
-          'uid': user.uid,
-          'email': email,
-          'username': userName,
-          'description': 'No description available',
-          'profilePicture': '',
-          'favoriteCategories': [],
-          'firstTimeLogin': true, // ✅ First-time login flag
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        return true;
-      }
-      return false;
-    } catch (e) {
-      print('❌ Registration Error: $e');
-      return false;
+    if (user != null) {
+      await _firestore.collection('users').doc(user.uid).set({
+        'uid': user.uid,
+        'email': email,
+        'username': userName,
+        'description': 'No description available',
+        'profilePicture': '',
+        'favoriteCategories': [],
+        'firstTimeLogin': true,
+        'createdAt': FieldValue.serverTimestamp(),
+        'points': 0,
+        'level': 'Beginner',
+        'badges': [],
+        'completed_exercises': [], // New field for tracking completed exercises
+      });
+      return true;
     }
+    return false;
+  } catch (e) {
+    print('❌ Registration Error: $e');
+    return false;
   }
+}
 
   // Login User & Check First-Time Login
   Future<bool?> login(String email, String password) async {
