@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:my_exercises/widgets/followers_page.dart';
-import 'package:my_exercises/widgets/following_page.dart';
-import 'package:my_exercises/widgets/user_profile_screen.dart';
-import '../data/auth_service.dart';
+import 'package:my_exercises/widgets/users/followers_widget.dart';
+import 'package:my_exercises/widgets/users/following_widget.dart';
+import 'package:my_exercises/widgets/users/user_profile_widget.dart';
+import '../../data/auth_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class MenuScreen extends StatefulWidget {
-  const MenuScreen({super.key});
+class SettingsPage extends StatefulWidget {
+  const SettingsPage({super.key});
 
   @override
-  State<MenuScreen> createState() => _MenuScreenState();
+  State<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _MenuScreenState extends State<MenuScreen> {
+class _SettingsPageState extends State<SettingsPage> {
   final AuthService _authService = AuthService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -178,79 +178,106 @@ Future<void> _fetchUserData() async {
     );
   }
 
-  void _showEditProfileDialog() {
-    final TextEditingController descriptionController = TextEditingController();
-
-    // Pre-fill current values
-    _usernameController.text = _username;
-    descriptionController.text = profileDescription ?? '';
-
-    showCupertinoDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return CupertinoAlertDialog(
-          title: const Text('Edit Profile'),
-          content: Column(
+ void _showEditProfileDialog() {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (BuildContext context) {
+      return Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom, // Keyboard Space Adjust
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 8),
-              CupertinoTextField(
-                controller: _usernameController,
-                placeholder: "Enter new username",
-                placeholderStyle: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.grey[400]
-                      : Colors.grey[600], // Dynamic placeholder color
-                ),
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : Colors.black, // Dynamic text color
-                ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              const Text(
+                "Edit Profile",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 8),
-              CupertinoTextField(
-                controller: descriptionController,
-                placeholder: "Enter new description",
-                placeholderStyle: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.grey[400]
-                      : Colors.grey[600], // Dynamic placeholder color
+              const SizedBox(height: 16),
+
+              // Profile Image
+              GestureDetector(
+                onTap: () {
+                  // TODO: Implement profile image picker
+                },
+                child: CircleAvatar(
+                  radius: 40,
+                  backgroundColor: Colors.blue,
+                  child: Icon(Icons.camera_alt, size: 30, color: Colors.white),
                 ),
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : Colors.black, // Dynamic text color
+              ),
+
+              const SizedBox(height: 16),
+
+              // Username TextField
+              TextField(
+                controller: _usernameController,
+                decoration: InputDecoration(
+                  labelText: "Username",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  prefixIcon: Icon(Icons.person_outline),
                 ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              ),
+              const SizedBox(height: 12),
+
+              // Description TextField
+              TextField(
+                controller: _descriptionController,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: "Description",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  prefixIcon: Icon(Icons.info_outline),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Save & Cancel Buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[400],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text("Cancel", style: TextStyle(color: Colors.white)),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      await _updateProfile(
+                        _usernameController.text.trim(),
+                        _descriptionController.text.trim(),
+                      );
+                      Navigator.of(context).pop();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text("Save", style: TextStyle(color: Colors.white)),
+                  ),
+                ],
               ),
             ],
           ),
-          actions: [
-            CupertinoDialogAction(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            CupertinoDialogAction(
-              onPressed: () async {
-                await _updateProfile(
-                  _usernameController.text.trim(),
-                  descriptionController.text.trim(),
-                );
-                Navigator.of(context).pop();
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
+
 
   Future<void> _updateProfile(String newUsername, String newDescription) async {
     if (newUsername.isEmpty || newDescription.isEmpty) {

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:my_exercises/screens/home_screen_detail_online.dart';
-import '../data/firestore_service.dart'; // Import FirestoreService
+import 'package:my_exercises/screens/home/home_screen_detail_online.dart';
+import '../../data/firestore_service.dart'; // Import FirestoreService
 
 class UserProfilePage extends StatefulWidget {
   final String uid;

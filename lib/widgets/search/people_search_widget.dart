@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'user_profile_screen.dart';
+import '../users/user_profile_widget.dart';
 
-class PeopleSearchScreen extends StatefulWidget {
-  const PeopleSearchScreen({super.key});
+class PeopleSearchWidget extends StatefulWidget {
+  const PeopleSearchWidget({super.key});
 
   @override
-  State<PeopleSearchScreen> createState() => _PeopleSearchScreenState();
+  State<PeopleSearchWidget> createState() => _PeopleSearchWidgetState();
 }
 
-class _PeopleSearchScreenState extends State<PeopleSearchScreen> {
+class _PeopleSearchWidgetState extends State<PeopleSearchWidget> {
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _searchResults = [];
   bool _isLoading = false;

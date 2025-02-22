@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:my_exercises/screens/home_screen_detail_online.dart';
-import '../data/firestore_service.dart';
-import 'search_page.dart';
+import 'package:my_exercises/screens/home/home_screen_detail_online.dart';
+import '../../data/firestore_service.dart';
+import '../../widgets/search/search_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -80,7 +80,7 @@ Future<void> _fetchFavoriteCategories() async {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) => const SearchPage()),
+                              builder: (context) => const SearchWidget()),
                         );
                       },
                     ),

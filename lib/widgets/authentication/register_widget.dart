@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import '../data/auth_service.dart';
-import '../screens/terms_and_privacy_policy_page.dart';
+import '../../data/auth_service.dart';
+import '../../screens/settings/terms_and_privacy_policy.dart';
 
-class RegisterPage extends StatefulWidget {
-  const RegisterPage({super.key});
+class RegisterWidget extends StatefulWidget {
+  const RegisterWidget({super.key});
 
   @override
-  RegisterPageState createState() => RegisterPageState();
+  RegisterWidgetState createState() => RegisterWidgetState();
 }
 
-class RegisterPageState extends State<RegisterPage> {
+class RegisterWidgetState extends State<RegisterWidget> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();

@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:my_exercises/data/auth_service.dart';
 
-class CreateExercisePage extends StatefulWidget {
-  const CreateExercisePage({super.key});
+class CreateExerciseWidget extends StatefulWidget {
+  const CreateExerciseWidget({super.key});
 
   @override
-  State<CreateExercisePage> createState() => _CreateExercisePageState();
+  State<CreateExerciseWidget> createState() => _CreateExerciseWidgetState();
 }
 
-class _CreateExercisePageState extends State<CreateExercisePage> {
+class _CreateExerciseWidgetState extends State<CreateExerciseWidget> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController =
       TextEditingController(); // Add description controller

@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:my_exercises/screens/home_screen_detail_online.dart';
+import 'package:my_exercises/screens/home/home_screen_detail_online.dart';
 
-class SearchPage extends StatefulWidget {
-  const SearchPage({super.key});
+class SearchWidget extends StatefulWidget {
+  const SearchWidget({super.key});
 
   @override
-  State<SearchPage> createState() => _SearchPageState();
+  State<SearchWidget> createState() => _SearchWidgetState();
 }
 
-class _SearchPageState extends State<SearchPage> {
+class _SearchWidgetState extends State<SearchWidget> {
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _searchResults = [];
   bool _isLoading = false;

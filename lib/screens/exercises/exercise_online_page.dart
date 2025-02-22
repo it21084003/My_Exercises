@@ -1,21 +1,21 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import '../data/offline_database_helper.dart';
-import '../models/question_model.dart';
-import '../widgets/result_page.dart';
+import '../../data/firestore_service.dart';
+import '../../models/question_model.dart';
+import '../results/result_online_page.dart';
 
-class OfflineExercisePage extends StatefulWidget {
-  final String exerciseId;
+class ExerciseOnlinePage extends StatefulWidget {
+  final String exerciseNumber;
 
-  const OfflineExercisePage({super.key, required this.exerciseId});
+  const ExerciseOnlinePage({super.key, required this.exerciseNumber});
 
   @override
-  State<OfflineExercisePage> createState() => _OfflineExercisePageState();
+  State<ExerciseOnlinePage> createState() => _ExerciseOnlinePageState();
 }
 
-class _OfflineExercisePageState extends State<OfflineExercisePage> with AutomaticKeepAliveClientMixin {
+class _ExerciseOnlinePageState extends State<ExerciseOnlinePage> with AutomaticKeepAliveClientMixin {
+  final FirestoreService _firestoreService = FirestoreService();
   late Future<List<Question>> _questionsFuture;
   final Map<int, String> _selectedAnswers = {};
   String _exerciseTitle = "Loading...";
@@ -27,29 +27,25 @@ class _OfflineExercisePageState extends State<OfflineExercisePage> with Automati
   void initState() {
     super.initState();
     _isMounted = true;
-    _questionsFuture = _fetchQuestions();
+    _questionsFuture = _firestoreService.fetchExerciseQuestions(widget.exerciseNumber);
     _fetchExerciseTitle();
     _startTimer();
   }
 
-  Future<List<Question>> _fetchQuestions() async {
-    final questionData = await DatabaseHelper.getExerciseQuestions(widget.exerciseId);
-    if (questionData.isEmpty) {
-      throw Exception("No questions found for this exercise in local storage.");
-    }
-    return questionData.map((json) => Question.fromJson(json)).toList();
-  }
-
   Future<void> _fetchExerciseTitle() async {
-    final exercises = await DatabaseHelper.getDownloadedExercises();
-    final exercise = exercises.firstWhere(
-      (e) => e['exerciseId'] == widget.exerciseId,
-      orElse: () => {'title': 'Untitled Exercise'},
-    );
-    if (_isMounted && mounted) {
-      setState(() {
-        _exerciseTitle = exercise['title'] ?? "Untitled Exercise";
-      });
+    try {
+      final exercise = await _firestoreService.getExerciseById(widget.exerciseNumber);
+      if (_isMounted && mounted) {
+        setState(() {
+          _exerciseTitle = exercise?['title'] ?? "Untitled Exercise";
+        });
+      }
+    } catch (e) {
+      if (_isMounted && mounted) {
+        setState(() {
+          _exerciseTitle = "Error loading title";
+        });
+      }
     }
   }
 
@@ -139,7 +135,9 @@ class _OfflineExercisePageState extends State<OfflineExercisePage> with Automati
                 final question = questions[index];
                 return Card(
                   elevation: 4,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16.0),
+                  ),
                   color: isDarkMode ? Colors.grey[900] : Colors.white,
                   margin: const EdgeInsets.symmetric(vertical: 8.0),
                   child: Padding(
@@ -251,12 +249,11 @@ class _OfflineExercisePageState extends State<OfflineExercisePage> with Automati
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => ResultPage(
+            builder: (context) => ResultOnlinePage(
               questions: questions,
               selectedAnswers: _selectedAnswers,
               timeTaken: _elapsedTime,
-              exerciseId: widget.exerciseId,
-              isOffline: true, // Indicate offline mode
+              exerciseId: widget.exerciseNumber,
             ),
           ),
         );

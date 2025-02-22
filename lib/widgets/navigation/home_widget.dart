@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
-import 'package:my_exercises/widgets/my_exercises.dart';
-import 'home_screen.dart';
+import 'package:my_exercises/widgets/exercises/my_exercises_widget.dart';
+import '../../screens/home/home_screen.dart';
 //import 'my_exercises_screen.dart';
-import 'menu_screen.dart';
+import '../../screens/settings/settings_page.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class HomeWidget extends StatefulWidget {
+  const HomeWidget({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomeWidget> createState() => _HomeWidgetState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomeWidgetState extends State<HomeWidget> {
   int _selectedIndex = 0;
 
   final List<Widget> _pages = const [
     HomeScreen(),
     MyExercises(),
-    MenuScreen(),
+    SettingsPage(),
   ];
 
   void _onItemTapped(int index) {

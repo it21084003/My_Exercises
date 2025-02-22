@@ -2,10 +2,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:my_exercises/widgets/downloaded_exercises_page.dart';
-import '../data/firestore_service.dart';
-import '../data/offline_database_helper.dart';
-import 'exercise_page_online.dart';
+import 'package:my_exercises/widgets/exercises/downloaded_exercises_widget.dart';
+import '../../data/firestore_service.dart';
+import '../../data/offline_database_helper.dart';
+import '../exercises/exercise_online_page.dart';
 import 'package:flutter/animation.dart';
 
 class HomeScreenDetailOnline extends StatefulWidget {
@@ -204,7 +204,7 @@ class _HomeScreenDetailOnlineState extends State<HomeScreenDetailOnline> with Ti
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(
-                                builder: (context) => const DownloadedExercisesPage()),
+                                builder: (context) => const DownloadedExercisesWidget()),
                           );
                         },
                         style: TextButton.styleFrom(
@@ -323,7 +323,7 @@ class _HomeScreenDetailOnlineState extends State<HomeScreenDetailOnline> with Ti
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ExercisePageOnline(
+        builder: (context) => ExerciseOnlinePage(
           exerciseNumber: widget.exerciseId,
         ),
       ),

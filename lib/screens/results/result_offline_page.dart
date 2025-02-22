@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import '../models/question_model.dart';
+import '../../models/question_model.dart';
 
-class ResultPageOffline extends StatelessWidget {
+class ResultOfflinePage extends StatelessWidget {
   final List<Question> questions;
   final Map<int, String> selectedAnswers;
   final int timeTaken;
   final String exerciseId;
 
-  const ResultPageOffline({
+  const ResultOfflinePage({
     super.key,
     required this.questions,
     required this.selectedAnswers,

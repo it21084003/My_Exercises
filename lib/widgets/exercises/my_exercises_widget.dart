@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:my_exercises/widgets/my_exercises_screen.dart';
-import '../data/offline_database_helper.dart';
-import 'downloaded_exercises_page.dart'; // Assuming we’ll create this new page
+import 'package:my_exercises/screens/exercises/my_exercises_screen.dart';
+import '../../data/offline_database_helper.dart';
+import 'downloaded_exercises_widget.dart'; // Assuming we’ll create this new page
 
 class MyExercises extends StatefulWidget {
   const MyExercises({super.key});
@@ -53,7 +53,7 @@ class _MyExercisesPageState extends State<MyExercises> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const DownloadedExercisesPage()),
+                  MaterialPageRoute(builder: (context) => const DownloadedExercisesWidget()),
                 ).then((_) => _fetchDownloadedExerciseCount()); // Refresh on return
               },
             ),

@@ -2,12 +2,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class EditExercisePage extends StatefulWidget {
+class EditExerciseWidget extends StatefulWidget {
   final String exerciseId;
   final String title;
   final bool shared;
 
-  const EditExercisePage({
+  const EditExerciseWidget({
     super.key,
     required this.exerciseId,
     required this.title,
@@ -15,10 +15,10 @@ class EditExercisePage extends StatefulWidget {
   });
 
   @override
-  State<EditExercisePage> createState() => _EditExercisePageState();
+  State<EditExerciseWidget> createState() => _EditExerciseWidgetState();
 }
 
-class _EditExercisePageState extends State<EditExercisePage> {
+class _EditExerciseWidgetState extends State<EditExerciseWidget> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   bool _isShared = false;

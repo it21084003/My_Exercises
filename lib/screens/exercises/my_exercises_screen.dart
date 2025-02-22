@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:my_exercises/screens/home_screen_detail_online.dart';
-import 'package:my_exercises/widgets/edit_exercise_page.dart';
-import '../data/firestore_service.dart';
-import 'create_exercise_page.dart';
+import 'package:my_exercises/screens/home/home_screen_detail_online.dart';
+import 'package:my_exercises/widgets/exercises/edit_exercise_widget.dart';
+import '../../data/firestore_service.dart';
+import '../../widgets/exercises/create_exercise_widget.dart';
 
 class MyExercisesPage extends StatefulWidget {
   const MyExercisesPage({super.key});
@@ -74,7 +74,7 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
   Future<void> _navigateToCreateExercise() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const CreateExercisePage()),
+      MaterialPageRoute(builder: (context) => const CreateExerciseWidget()),
     );
     _fetchExercises();
   }
@@ -265,7 +265,7 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
-                                                builder: (context) => EditExercisePage(
+                                                builder: (context) => EditExerciseWidget(
                                                   exerciseId: exerciseId,
                                                   title: title,
                                                   shared: exercise['shared'],

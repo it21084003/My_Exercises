@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/question_model.dart';
+import '../../models/question_model.dart';
 
-class ResultPageOnline extends StatelessWidget {
+class ResultOnlinePage extends StatelessWidget {
   final List<Question> questions;
   final Map<int, String> selectedAnswers;
   final int timeTaken;
   final String exerciseId;
 
-  const ResultPageOnline({
+  const ResultOnlinePage({
     super.key,
     required this.questions,
     required this.selectedAnswers,

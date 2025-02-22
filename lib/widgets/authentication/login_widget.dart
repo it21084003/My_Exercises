@@ -3,18 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:my_exercises/data/auth_service.dart';
-import 'package:my_exercises/widgets/register_page.dart';
-import 'package:my_exercises/widgets/reset_password.dart';
-import 'package:my_exercises/widgets/select_categories_page.dart';
+import 'package:my_exercises/widgets/authentication/register_widget.dart';
+import 'package:my_exercises/widgets/authentication/reset_password_widget.dart';
+import 'package:my_exercises/widgets/categories/select_categories_widget.dart';
 
-class LoginForm extends StatefulWidget {
-  const LoginForm({super.key});
+class LoginWidget extends StatefulWidget {
+  const LoginWidget({super.key});
 
   @override
-  LoginFormState createState() => LoginFormState();
+  LoginWidgetState createState() => LoginWidgetState();
 }
 
-class LoginFormState extends State<LoginForm> {
+class LoginWidgetState extends State<LoginWidget> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -75,7 +75,7 @@ class LoginFormState extends State<LoginForm> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => SelectCategoriesPage(
+          builder: (context) => SelectCategoriesWidget(
             onCategoriesSelected: () async {
               await FirebaseFirestore.instance
                   .collection('users')
@@ -97,14 +97,14 @@ class LoginFormState extends State<LoginForm> {
   void _goToRegisterPage() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const RegisterPage()),
+      MaterialPageRoute(builder: (context) => const RegisterWidget()),
     );
   }
 
   void _goToResetPasswordPage() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const ResetPasswordPage()),
+      MaterialPageRoute(builder: (context) => const ResetPasswordWidget()),
     );
   }
 

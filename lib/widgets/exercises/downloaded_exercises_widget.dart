@@ -1,16 +1,16 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:my_exercises/data/offline_database_helper.dart';
-import 'package:my_exercises/screens/home_screen_detail_offline.dart'; 
+import 'package:my_exercises/screens/home/home_screen_detail_offline.dart'; 
 
-class DownloadedExercisesPage extends StatefulWidget {
-  const DownloadedExercisesPage({super.key});
+class DownloadedExercisesWidget extends StatefulWidget {
+  const DownloadedExercisesWidget({super.key});
 
   @override
-  State<DownloadedExercisesPage> createState() => _DownloadedExercisesPageState();
+  State<DownloadedExercisesWidget> createState() => _DownloadedExercisesWidgetState();
 }
 
-class _DownloadedExercisesPageState extends State<DownloadedExercisesPage> {
+class _DownloadedExercisesWidgetState extends State<DownloadedExercisesWidget> {
   List<Map<String, dynamic>> _downloadedExercises = [];
   bool _isLoading = true;
 

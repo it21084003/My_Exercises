@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class SelectCategoriesPage extends StatefulWidget {
+class SelectCategoriesWidget extends StatefulWidget {
   final VoidCallback onCategoriesSelected;
 
-  const SelectCategoriesPage({super.key, required this.onCategoriesSelected});
+  const SelectCategoriesWidget({super.key, required this.onCategoriesSelected});
 
   @override
-  _SelectCategoriesPageState createState() => _SelectCategoriesPageState();
+  _SelectCategoriesWidgetState createState() => _SelectCategoriesWidgetState();
 }
 
-class _SelectCategoriesPageState extends State<SelectCategoriesPage> {
+class _SelectCategoriesWidgetState extends State<SelectCategoriesWidget> {
   final List<String> _categories = [
     'Math', 'Science', 'English', 'Programming', 'History',
     'Geography', 'Physics', 'Chemistry', 'Biology', 'Music',

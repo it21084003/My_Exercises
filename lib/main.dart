@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'widgets/login_form.dart';
-import 'widgets/home_page.dart';
-import 'widgets/select_categories_page.dart';
-import 'firebase_options.dart';
+import 'widgets/authentication/login_widget.dart';
+import 'widgets/navigation/home_widget.dart';
+import 'widgets/categories/select_categories_widget.dart';
+import 'config/firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,8 +27,8 @@ class MyApp extends StatelessWidget {
       themeMode: ThemeMode.system,
       home: const AuthWrapper(),
       routes: {
-        '/login': (context) => const LoginForm(),
-        '/home': (context) => const HomePage(),
+        '/login': (context) => const LoginWidget(),
+        '/home': (context) => const HomeWidget(),
       },
     );
   }
@@ -55,7 +55,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     User? user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      _nextPage = const LoginForm(); // 🚀 No user → Show login
+      _nextPage = const LoginWidget(); // 🚀 No user → Show login
     } else {
       // 🚀 Check Firestore for firstTimeLogin
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
@@ -64,7 +64,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         bool isFirstTime = userDoc['firstTimeLogin'] ?? true;
         
         if (isFirstTime) {
-          _nextPage = SelectCategoriesPage(
+          _nextPage = SelectCategoriesWidget(
             onCategoriesSelected: () async {
               await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
                 'firstTimeLogin': false, // ✅ Mark as NOT first login
@@ -72,16 +72,16 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
               if (mounted) {
                 setState(() {
-                  _nextPage = const HomePage();
+                  _nextPage = const HomeWidget();
                 });
               }
             },
           );
         } else {
-          _nextPage = const HomePage();
+          _nextPage = const HomeWidget();
         }
       } else {
-        _nextPage = const LoginForm(); // If no Firestore data, force login
+        _nextPage = const LoginWidget(); // If no Firestore data, force login
       }
     }
 

@@ -2,20 +2,20 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import '../data/offline_database_helper.dart';
-import '../models/question_model.dart';
-import 'result_page_offline.dart';
+import '../../data/offline_database_helper.dart';
+import '../../models/question_model.dart';
+import '../results/result_offline_page.dart';
 
-class ExercisePageOffline extends StatefulWidget {
+class ExerciseOfflinePage extends StatefulWidget {
   final String exerciseId;
 
-  const ExercisePageOffline({super.key, required this.exerciseId});
+  const ExerciseOfflinePage({super.key, required this.exerciseId});
 
   @override
-  State<ExercisePageOffline> createState() => _ExercisePageOfflineState();
+  State<ExerciseOfflinePage> createState() => _ExerciseOfflinePageState();
 }
 
-class _ExercisePageOfflineState extends State<ExercisePageOffline> with AutomaticKeepAliveClientMixin {
+class _ExerciseOfflinePageState extends State<ExerciseOfflinePage> with AutomaticKeepAliveClientMixin {
   late Future<List<Question>> _questionsFuture;
   final Map<int, String> _selectedAnswers = {};
   String _exerciseTitle = "Loading...";
@@ -251,7 +251,7 @@ class _ExercisePageOfflineState extends State<ExercisePageOffline> with Automati
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => ResultPageOffline(
+            builder: (context) => ResultOfflinePage(
               questions: questions,
               selectedAnswers: _selectedAnswers,
               timeTaken: _elapsedTime,

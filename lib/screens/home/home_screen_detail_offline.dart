@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../data/offline_database_helper.dart';
-import 'exercise_page_offline.dart';
+import '../../data/offline_database_helper.dart';
+import '../exercises/exercise_offline_page.dart';
 
 class HomeScreenDetailOffline extends StatefulWidget {
   final String exerciseId;
@@ -81,7 +81,7 @@ class _HomeScreenDetailOfflineState extends State<HomeScreenDetailOffline> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ExercisePageOffline(
+        builder: (context) => ExerciseOfflinePage(
           exerciseId: widget.exerciseId,
         ),
       ),
