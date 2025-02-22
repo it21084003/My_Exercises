@@ -36,7 +36,7 @@ class _HomePageState extends State<HomePage> {
         child: _pages[_selectedIndex],
       ),
       bottomNavigationBar: CurvedNavigationBar(
-        backgroundColor: isDarkMode ? Colors.black : Colors.white, // Dynamic BG Color
+        backgroundColor: isDarkMode ? Colors.black : const Color.fromRGBO(253, 247, 254, 1), // Dynamic BG Color
         color:  Colors.blueAccent, // Navbar Color
         height: 60,
         animationDuration: const Duration(milliseconds: 300),

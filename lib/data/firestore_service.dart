@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:my_exercises/models/question_model.dart';
 import 'package:flutter/foundation.dart';
-import 'package:timeago/timeago.dart' as timeago; // Time formatting
+import 'package:timeago/timeago.dart' as timeago;
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -54,8 +54,8 @@ class FirestoreService {
         return {
           'exerciseId': doc.id,
           ...doc.data() as Map<String, dynamic>,
-          'isForked': false, // Mark as created by user
-          'downloadedCount': doc['downloadedCount'] ?? 0, // Explicitly include downloadedCount
+          'isForked': false,
+          'downloadedCount': doc['downloadedCount'] ?? 0,
         };
       }).toList();
 
@@ -66,7 +66,7 @@ class FirestoreService {
         final exerciseId = doc.id;
         final exerciseRef = await _firestore.collection('exercises').doc(exerciseId).get();
 
-        if (!exerciseRef.exists) continue; // Skip if it doesn't exist
+        if (!exerciseRef.exists) continue;
 
         final exerciseData = exerciseRef.data() as Map<String, dynamic>;
         if (exerciseData['shared'] == true) {
@@ -74,8 +74,8 @@ class FirestoreService {
           forkedExercises.add({
             'exerciseId': exerciseId,
             ...exerciseData,
-            'isForked': true, // Mark as forked
-            'downloadedCount': exerciseData['downloadedCount'] ?? 0, // Explicitly include downloadedCount
+            'isForked': true,
+            'downloadedCount': exerciseData['downloadedCount'] ?? 0,
           });
         }
       }
@@ -97,7 +97,7 @@ class FirestoreService {
         return {
           'exerciseId': doc.id,
           ...doc.data() as Map<String, dynamic>,
-          'downloadedCount': doc['downloadedCount'] ?? 0, // Explicitly include downloadedCount
+          'downloadedCount': doc['downloadedCount'] ?? 0,
         };
       }).toList();
     } catch (e) {
@@ -140,7 +140,7 @@ class FirestoreService {
         return {
           'exerciseId': doc.id,
           ...doc.data() as Map<String, dynamic>,
-          'downloadedCount': doc['downloadedCount'] ?? 0, // Explicitly include downloadedCount
+          'downloadedCount': doc['downloadedCount'] ?? 0,
         };
       }).toList();
     } catch (e) {
@@ -158,7 +158,7 @@ class FirestoreService {
         return {
           'exerciseId': doc.id,
           ...doc.data() as Map<String, dynamic>,
-          'downloadedCount': doc['downloadedCount'] ?? 0, // Explicitly include downloadedCount
+          'downloadedCount': doc['downloadedCount'] ?? 0,
         };
       }
       return null;
@@ -168,16 +168,14 @@ class FirestoreService {
     }
   }
 
- /// Fetch exercises filtered by category and user's favorite categories
-  Future<List<Map<String, dynamic>>> fetchFilteredExercises(
-      {required String category}) async {
+  /// Fetch exercises filtered by category and user's favorite categories
+  Future<List<Map<String, dynamic>>> fetchFilteredExercises({required String category}) async {
     try {
       final user = _auth.currentUser;
       if (user == null) return [];
 
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
-      final List<String> favoriteCategories =
-          List<String>.from(userDoc['favoriteCategories'] ?? []);
+      final List<String> favoriteCategories = List<String>.from(userDoc['favoriteCategories'] ?? []);
 
       if (favoriteCategories.isEmpty) return [];
 
@@ -202,7 +200,7 @@ class FirestoreService {
       return querySnapshot.docs.map((doc) {
         final Timestamp? timestamp = doc["timestamp"] as Timestamp?;
         final String formattedTime = timestamp != null
-            ? _formatShortTimeAgo(timestamp.toDate()) // Use custom short format
+            ? formatShortTimeAgo(timestamp.toDate())
             : "Unknown";
 
         debugPrint("Fetching filtered exercise ${doc.id}: downloadedCount = ${doc['downloadedCount'] ?? 0}");
@@ -212,9 +210,9 @@ class FirestoreService {
           "description": doc["description"],
           "creatorUsername": doc["creatorUsername"],
           "categories": List<String>.from(doc["categories"] ?? []),
-          "downloadedCount": doc["downloadedCount"] ?? 0, // Explicitly include downloadedCount
+          "downloadedCount": doc["downloadedCount"] ?? 0,
           "shared": doc["shared"] ?? false,
-          "timestamp": formattedTime, // ✅ Uses short time format
+          "timestamp": formattedTime,
         };
       }).toList();
     } catch (e) {
@@ -223,25 +221,25 @@ class FirestoreService {
     }
   }
 
-  /// Custom function to format timestamp in short format (e.g., "5m," "2h," "5d," "1mo")
-  String _formatShortTimeAgo(DateTime date) {
+  /// Public method to format timestamp in short format (e.g., "5m," "2h," "5d," "1mo")
+  String formatShortTimeAgo(DateTime date) {
     final Duration difference = DateTime.now().difference(date);
     final int minutes = difference.inMinutes;
     final int hours = difference.inHours;
     final int days = difference.inDays;
-    final int months = (days / 30).floor(); // Approximate months
-    final int years = (days / 365).floor(); // Approximate years
+    final int months = (days / 30).floor();
+    final int years = (days / 365).floor();
 
     if (minutes < 60) {
-      return "${minutes}m"; // e.g., "5m"
+      return "${minutes}m";
     } else if (hours < 24) {
-      return "${hours}h"; // e.g., "2h"
+      return "${hours}h";
     } else if (days < 30) {
-      return "${days}d"; // e.g., "5d"
+      return "${days}d";
     } else if (days < 365) {
-      return "${months}mo"; // e.g., "1mo"
+      return "${months}mo";
     } else {
-      return "${years}y"; // e.g., "1y"
+      return "${years}y";
     }
   }
 }

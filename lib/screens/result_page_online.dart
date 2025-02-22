@@ -2,32 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/question_model.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 
-class ResultPage extends StatelessWidget {
+class ResultPageOnline extends StatelessWidget {
   final List<Question> questions;
   final Map<int, String> selectedAnswers;
   final int timeTaken;
   final String exerciseId;
-  final bool isOffline; // New parameter to indicate offline mode
 
-  const ResultPage({
+  const ResultPageOnline({
     super.key,
     required this.questions,
     required this.selectedAnswers,
     required this.timeTaken,
     required this.exerciseId,
-    this.isOffline = false,
   });
 
   Future<Map<String, dynamic>> _updateUserPoints() async {
-    if (isOffline) {
-      return {
-        'points': 0,
-        'message': 'Offline mode: Points will sync when online.',
-      };
-    }
-
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       const int pointsPerExercise = 10;

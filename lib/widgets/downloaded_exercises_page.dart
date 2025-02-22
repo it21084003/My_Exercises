@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:my_exercises/widgets/home_screen_detail.dart';
-import '../data/offline_database_helper.dart';
+import 'package:flutter/material.dart';
+import 'package:my_exercises/data/offline_database_helper.dart';
+import 'package:my_exercises/screens/home_screen_detail_offline.dart'; 
 
 class DownloadedExercisesPage extends StatefulWidget {
   const DownloadedExercisesPage({super.key});
@@ -21,15 +21,30 @@ class _DownloadedExercisesPageState extends State<DownloadedExercisesPage> {
   }
 
   Future<void> _fetchDownloadedExercises() async {
-    final exercises = await DatabaseHelper.getDownloadedExercises();
-    setState(() {
-      _downloadedExercises = exercises;
-      _isLoading = false;
-    });
+    try {
+      final exercises = await DatabaseHelper.getDownloadedExercises();
+      debugPrint("Fetched exercises: $exercises");
+      if (mounted) {
+        setState(() {
+          _downloadedExercises = exercises;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching exercises: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error loading exercises: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Future<void> _removeDownloadedExercise(String exerciseId) async {
-    // Add confirmation dialog before deletion
+    debugPrint("Attempting to remove exercise with ID: $exerciseId");
     bool confirm = await showCupertinoDialog(
       context: context,
       builder: (context) => CupertinoAlertDialog(
@@ -50,12 +65,47 @@ class _DownloadedExercisesPageState extends State<DownloadedExercisesPage> {
     );
 
     if (confirm == true) {
-      await DatabaseHelper.removeDownloadedExercise(exerciseId);
-      // Refetch the downloaded exercises to ensure the list is up-to-date
-      await _fetchDownloadedExercises();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Exercise removed successfully.")),
-      );
+      try {
+        final exists = await DatabaseHelper.isDownloaded(exerciseId);
+        debugPrint("Exercise exists before deletion: $exists");
+        if (!exists) {
+          throw Exception("Exercise with ID $exerciseId not found in local storage.");
+        }
+
+        await DatabaseHelper.removeDownloadedExercise(exerciseId);
+        await _fetchDownloadedExercises();
+
+        final stillExists = await DatabaseHelper.isDownloaded(exerciseId);
+        debugPrint("Exercise exists after deletion: $stillExists");
+        if (stillExists) {
+          throw Exception("Failed to delete exercise with ID $exerciseId.");
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Exercise removed successfully.")),
+          );
+        }
+      } catch (e) {
+        debugPrint("Error removing exercise: $e");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Error removing exercise: $e"), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+  }
+
+  void _navigateToExercise(String exerciseId) {
+    debugPrint("Navigating to ExercisePageOffline with ID: $exerciseId");
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HomeScreenDetailOffline(exerciseId: exerciseId),
+        ),
+      ).then((_) => _fetchDownloadedExercises());
     }
   }
 
@@ -129,17 +179,7 @@ class _DownloadedExercisesPageState extends State<DownloadedExercisesPage> {
                             ),
                           ],
                         ),
-                        onTap: () {
-                          // Navigate to HomeScreenDetail for the downloaded exercise
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => HomeScreenDetail(
-                                exerciseId: exercise['exerciseId'],
-                              ),
-                            ),
-                          );
-                        },
+                        onTap: () => _navigateToExercise(exercise['exerciseId']),
                       ),
                     );
                   },

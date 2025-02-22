@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:my_exercises/widgets/home_screen_detail.dart';
-import '../screens/exercise_page.dart';
+import 'package:my_exercises/screens/home_screen_detail_online.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -287,7 +286,7 @@ class _SearchPageState extends State<SearchPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => HomeScreenDetail(
+                  builder: (context) => HomeScreenDetailOnline(
                     exerciseId: exercise['exerciseId'],
                   ),
                 ),

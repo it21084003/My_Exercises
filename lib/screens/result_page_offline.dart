@@ -1,93 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../models/question_model.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 
-class ResultPage extends StatelessWidget {
+class ResultPageOffline extends StatelessWidget {
   final List<Question> questions;
   final Map<int, String> selectedAnswers;
   final int timeTaken;
   final String exerciseId;
-  final bool isOffline; // New parameter to indicate offline mode
 
-  const ResultPage({
+  const ResultPageOffline({
     super.key,
     required this.questions,
     required this.selectedAnswers,
     required this.timeTaken,
     required this.exerciseId,
-    this.isOffline = false,
   });
-
-  Future<Map<String, dynamic>> _updateUserPoints() async {
-    if (isOffline) {
-      return {
-        'points': 0,
-        'message': 'Offline mode: Points will sync when online.',
-      };
-    }
-
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      const int pointsPerExercise = 10;
-      try {
-        DocumentReference userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
-        DocumentSnapshot snapshot = await userDoc.get();
-
-        List<String> completedExercises = List<String>.from(snapshot['completed_exercises'] ?? []);
-        if (completedExercises.contains(exerciseId)) {
-          return {
-            'points': 0,
-            'message': 'Points are awarded only once for this exercise.',
-          };
-        }
-
-        int currentPoints = snapshot['points'] ?? 0;
-        int newPoints = currentPoints + pointsPerExercise;
-        String newLevel = _calculateLevel(newPoints);
-        List<String> currentBadges = List<String>.from(snapshot['badges'] ?? []);
-        List<String> newBadges = _checkForBadges(newPoints, currentBadges);
-        completedExercises.add(exerciseId);
-
-        await userDoc.update({
-          'points': newPoints,
-          'level': newLevel,
-          'badges': newBadges,
-          'completed_exercises': completedExercises,
-        });
-        return {
-          'points': pointsPerExercise,
-          'message': 'Points earned for first-time completion!',
-        };
-      } catch (e) {
-        return {
-          'points': 0,
-          'message': 'Error updating points: $e',
-        };
-      }
-    }
-    return {
-      'points': 0,
-      'message': 'User not logged in.',
-    };
-  }
-
-  String _calculateLevel(int points) {
-    if (points >= 700) return 'Master';
-    if (points >= 300) return 'Expert';
-    return 'Beginner';
-  }
-
-  List<String> _checkForBadges(int points, List<String> currentBadges) {
-    if (points >= 100 && !currentBadges.contains('First 100 Points')) {
-      currentBadges.add('First 100 Points');
-    }
-    if (points >= 300 && !currentBadges.contains('300 Point Champion')) {
-      currentBadges.add('300 Point Champion');
-    }
-    return currentBadges;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -140,34 +66,6 @@ class ResultPage extends StatelessWidget {
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
-              ),
-              const SizedBox(height: 10),
-              FutureBuilder<Map<String, dynamic>>(
-                future: _updateUserPoints(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Text(
-                      'Calculating points...',
-                      style: TextStyle(fontSize: 18, color: Colors.blue),
-                    );
-                  }
-                  int pointsEarned = snapshot.data?['points'] ?? 0;
-                  String message = snapshot.data?['message'] ?? 'Error loading points';
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Points Earned: $pointsEarned',
-                        style: const TextStyle(fontSize: 18, color: Colors.blue),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        message,
-                        style: const TextStyle(fontSize: 14, color: Colors.grey),
-                      ),
-                    ],
-                  );
-                },
               ),
               const SizedBox(height: 10),
               Text(

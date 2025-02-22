@@ -42,7 +42,7 @@ class _MyExercisesPageState extends State<MyExercises> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const MyExercisesPage()),
-                );
+                ).then((_) => _fetchDownloadedExerciseCount()); // Refresh on return
               },
             ),
             const SizedBox(height: 16),
@@ -54,7 +54,7 @@ class _MyExercisesPageState extends State<MyExercises> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const DownloadedExercisesPage()),
-                );
+                ).then((_) => _fetchDownloadedExerciseCount()); // Refresh on return
               },
             ),
           ],

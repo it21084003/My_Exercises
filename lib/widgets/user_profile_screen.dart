@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:my_exercises/screens/home_screen_detail_online.dart';
+import '../data/firestore_service.dart'; // Import FirestoreService
 
 class UserProfilePage extends StatefulWidget {
   final String uid;
@@ -18,10 +20,10 @@ class UserProfilePage extends StatefulWidget {
   State<UserProfilePage> createState() => _UserProfilePageState();
 }
 
-class _UserProfilePageState extends State<UserProfilePage>
-    with SingleTickerProviderStateMixin {
+class _UserProfilePageState extends State<UserProfilePage> with TickerProviderStateMixin {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirestoreService _firestoreService = FirestoreService(); // Instance of FirestoreService
 
   String? profileDescription;
   String? profilePictureUrl;
@@ -69,8 +71,7 @@ class _UserProfilePageState extends State<UserProfilePage>
 
   Future<void> _fetchUserProfile() async {
     try {
-      DocumentSnapshot userDoc =
-          await _firestore.collection('users').doc(widget.uid).get();
+      DocumentSnapshot userDoc = await _firestore.collection('users').doc(widget.uid).get();
 
       if (userDoc.exists) {
         setState(() {
@@ -128,6 +129,18 @@ class _UserProfilePageState extends State<UserProfilePage>
       setState(() {
         userExercises = exerciseSnapshot.docs.map((doc) {
           final data = doc.data() as Map<String, dynamic>;
+          final Timestamp? timestamp = data['timestamp'] as Timestamp?; // Cast to Timestamp
+          final dynamic categories = data['categories'] ?? []; // Get categories as dynamic list
+
+          // Safely cast categories to List<String>
+          List<String> categoriesList = [];
+          if (categories is List) {
+            categoriesList = categories.map((item) {
+              if (item is String) return item;
+              return item.toString(); // Convert non-String items to strings
+            }).toList();
+          }
+
           return {
             'id': doc.id,
             'title': data['title'] ?? 'Untitled',
@@ -135,6 +148,8 @@ class _UserProfilePageState extends State<UserProfilePage>
             'creatorId': data['creatorId'] ?? 'Unknown',
             'creatorUsername': data['creatorUsername'] ?? 'Unknown',
             'shared': data['shared'] ?? false,
+            'timestamp': timestamp, // Store as Timestamp for formatting
+            'categories': categoriesList, // Store as List<String>
           };
         }).toList();
       });
@@ -172,8 +187,7 @@ class _UserProfilePageState extends State<UserProfilePage>
         .collection('users')
         .doc(currentUser.uid)
         .collection('following');
-    final followersRef =
-        _firestore.collection('users').doc(widget.uid).collection('followers');
+    final followersRef = _firestore.collection('users').doc(widget.uid).collection('followers');
 
     try {
       if (isFollowing) {
@@ -255,13 +269,21 @@ class _UserProfilePageState extends State<UserProfilePage>
   }
 
   void _showExerciseDetails(Map<String, dynamic> exercise) {
+    final exerciseId = exercise['id'] as String?;
+    if (exerciseId == null || exerciseId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Exercise ID is missing!'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ExerciseDetailsPage(
-          exerciseId: exercise['id'],
-          title: exercise['title'],
-          description: exercise['description'],
+        builder: (context) => HomeScreenDetailOnline(
+          exerciseId: exerciseId,
         ),
       ),
     );
@@ -269,13 +291,21 @@ class _UserProfilePageState extends State<UserProfilePage>
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(title: Text(widget.username)),
+      backgroundColor: isDarkMode ? Colors.grey[900] : const Color.fromRGBO(253, 247, 254, 1),
+      appBar: AppBar(
+        title: Text(widget.username),
+        backgroundColor: isDarkMode ? Colors.grey[900] : const Color.fromRGBO(253, 247, 254, 1),
+        foregroundColor: isDarkMode ? Colors.white : Colors.black, // Ensure text visibility
+        elevation: 0, // Remove shadow to blend with background
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Profile Section
+            // Profile Section (unchanged, keeping colors and design)
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -292,8 +322,7 @@ class _UserProfilePageState extends State<UserProfilePage>
                           ? NetworkImage(profilePictureUrl!)
                           : null,
                       child: profilePictureUrl == null
-                          ? const Icon(Icons.person,
-                              size: 40, color: Colors.white)
+                          ? const Icon(Icons.person, size: 40, color: Colors.white)
                           : null,
                     ),
                     const SizedBox(width: 16),
@@ -319,11 +348,9 @@ class _UserProfilePageState extends State<UserProfilePage>
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              Text('Followers: $followersCount',
-                                  style: const TextStyle(fontSize: 14)),
+                              Text('Followers: $followersCount', style: const TextStyle(fontSize: 14)),
                               const SizedBox(width: 20),
-                              Text('Following: $followingCount',
-                                  style: const TextStyle(fontSize: 14)),
+                              Text('Following: $followingCount', style: const TextStyle(fontSize: 14)),
                             ],
                           ),
                         ],
@@ -336,7 +363,7 @@ class _UserProfilePageState extends State<UserProfilePage>
 
             const SizedBox(height: 20),
 
-            // Follow Button
+            // Follow Button (unchanged, keeping colors and design)
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 40),
@@ -359,64 +386,137 @@ class _UserProfilePageState extends State<UserProfilePage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "Exercises",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   Expanded(
                     child: userExercises.isEmpty
-                        ? const Center(
-                            child: Text("No exercises available",
-                                style: TextStyle(color: Colors.grey)),
+                        ?  Center(
+                            child: Text(
+                              "No exercises available",
+                              style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.grey),
+                            ),
                           )
                         : ListView.builder(
                             itemCount: userExercises.length,
                             itemBuilder: (context, index) {
                               final exercise = userExercises[index];
-                              final isForked =
-                                  forkedExercises.contains(exercise['id']);
+                              final isForked = forkedExercises.contains(exercise['id']);
+                              final Timestamp? timestamp = exercise['timestamp'] as Timestamp?; // Cast to Timestamp
+                              final String timeAgo = timestamp != null
+                                  ? _firestoreService.formatShortTimeAgo(timestamp.toDate())
+                                  : "Unknown"; // Use FirestoreService's public method
 
                               return Card(
-                                margin: const EdgeInsets.symmetric(vertical: 6),
-                                elevation: 3,
+                                elevation: 4, // Match HomeScreen elevation
+                                margin: const EdgeInsets.symmetric(vertical: 8.0), // Match HomeScreen margin
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(16), // Match HomeScreen rounded corners
                                 ),
-                                child: ListTile(
-                                  title: Text(
-                                    exercise['title'],
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                  subtitle: Text(exercise['description']),
-                                  trailing: AnimatedBuilder(
-                                    animation: _shakeAnimation,
-                                    builder: (context, child) {
-                                      return Transform.translate(
-                                        offset: Offset(
-                                          !isForked ? _shakeAnimation.value : 0,
-                                          0,
-                                        ),
-                                        child: IconButton(
-                                          icon: Icon(
-                                            isForked
-                                                ? Icons.check_circle
-                                                : Icons.download,
-                                            color: isForked
-                                                ? Colors.green
-                                                : Colors.blue,
+                                color: isDarkMode ? Colors.grey[900] : Colors.white, // Match HomeScreen card color
+                                child: Padding(
+                                  padding: const EdgeInsets.all(1), // Match HomeScreen padding
+                                  child: ListTile(
+                                    title: Text(
+                                      exercise['title'],
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: isDarkMode ? Colors.white : Colors.black,
+                                      ),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          exercise['description'],
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: isDarkMode ? Colors.white70 : Colors.black87,
                                           ),
-                                          onPressed: isForked
-                                              ? null
-                                              : () => _forkExercise(exercise),
                                         ),
-                                      );
-                                    },
+                                        const SizedBox(height: 6),
+                                        // Category Tags (if available, add similar to HomeScreen)
+                                        if (exercise['categories'] != null && exercise['categories'] is List)
+                                          Wrap(
+                                            spacing: 6,
+                                            runSpacing: 4,
+                                            children: (exercise['categories'] as List).map((item) {
+                                              String category = item.toString(); // Ensure item is a String
+                                              return Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blue.withOpacity(0.15), // Match HomeScreen
+                                                  borderRadius: BorderRadius.circular(16), // Match HomeScreen
+                                                  border: Border.all(color: Colors.blue, width: 1), // Match HomeScreen
+                                                ),
+                                                child: Text(
+                                                  category,
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.blue, // Match HomeScreen
+                                                  ),
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ),
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Row(
+                                                children: [
+                                                  const Icon(Icons.download, size: 18, color: Colors.blue), // Match HomeScreen
+                                                  const SizedBox(width: 5),
+                                                  Text(
+                                                    _formatDownloadCount(exercise['downloadedCount'] ?? 0),
+                                                    style: const TextStyle(fontSize: 14, color: Colors.blue), // Match HomeScreen
+                                                  ),
+                                                  const SizedBox(width: 15),
+                                                  Text(
+                                                    timeAgo, // Use formatted timestamp
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      color: isDarkMode ? Colors.white70 : Colors.grey,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    trailing: AnimatedBuilder(
+                                      animation: _shakeAnimation,
+                                      builder: (context, child) {
+                                        return Transform.translate(
+                                          offset: Offset(
+                                            !isForked ? _shakeAnimation.value : 0,
+                                            0,
+                                          ),
+                                          child: IconButton(
+                                            icon: Icon(
+                                              isForked ? Icons.check_circle : Icons.fork_right,
+                                              color: isForked ? Colors.green : Colors.blue,
+                                            ),
+                                            onPressed: isForked
+                                                ? null
+                                                : () => _forkExercise(exercise),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    onTap: isForked
+                                        ? () => _showExerciseDetails(exercise)
+                                        : _triggerShake,
                                   ),
-                                  onTap: isForked
-                                      ? () => _showExerciseDetails(exercise)
-                                      : _triggerShake,
                                 ),
                               );
                             },
@@ -429,6 +529,12 @@ class _UserProfilePageState extends State<UserProfilePage>
         ),
       ),
     );
+  }
+
+  String _formatDownloadCount(int count) {
+    if (count >= 1000000) return '${(count / 1000000).toStringAsFixed(1)}M';
+    if (count >= 1000) return '${(count / 1000).toStringAsFixed(1)}K';
+    return count.toString();
   }
 }
 
@@ -446,8 +552,16 @@ class ExerciseDetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      backgroundColor: isDarkMode ? Colors.grey[900] : const Color(0xFFF5E6E6), // Match other screens
+      appBar: AppBar(
+        title: Text(title),
+        backgroundColor: isDarkMode ? Colors.grey[900] : const Color(0xFFF5E6E6), // Match Scaffold background
+        foregroundColor: isDarkMode ? Colors.white : Colors.black, // Ensure text visibility
+        elevation: 0, // Remove shadow to blend with background
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -455,10 +569,20 @@ class ExerciseDetailsPage extends StatelessWidget {
           children: [
             Text(
               title,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : Colors.black, // Match other screens
+              ),
             ),
             const SizedBox(height: 10),
-            Text(description, style: const TextStyle(fontSize: 16)),
+            Text(
+              description,
+              style: TextStyle(
+                fontSize: 16,
+                color: isDarkMode ? Colors.white70 : Colors.black87, // Match other screens
+              ),
+            ),
             // Additional details for the exercise can be added here
           ],
         ),

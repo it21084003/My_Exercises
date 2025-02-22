@@ -1,21 +1,21 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import '../data/firestore_service.dart';
+import '../data/offline_database_helper.dart';
 import '../models/question_model.dart';
-import '../widgets/result_page.dart';
+import 'result_page_offline.dart';
 
-class ExercisePage extends StatefulWidget {
-  final String exerciseNumber;
+class ExercisePageOffline extends StatefulWidget {
+  final String exerciseId;
 
-  const ExercisePage({super.key, required this.exerciseNumber});
+  const ExercisePageOffline({super.key, required this.exerciseId});
 
   @override
-  State<ExercisePage> createState() => _ExercisePageState();
+  State<ExercisePageOffline> createState() => _ExercisePageOfflineState();
 }
 
-class _ExercisePageState extends State<ExercisePage> with AutomaticKeepAliveClientMixin {
-  final FirestoreService _firestoreService = FirestoreService();
+class _ExercisePageOfflineState extends State<ExercisePageOffline> with AutomaticKeepAliveClientMixin {
   late Future<List<Question>> _questionsFuture;
   final Map<int, String> _selectedAnswers = {};
   String _exerciseTitle = "Loading...";
@@ -27,36 +27,40 @@ class _ExercisePageState extends State<ExercisePage> with AutomaticKeepAliveClie
   void initState() {
     super.initState();
     _isMounted = true;
-    _questionsFuture = _firestoreService.fetchExerciseQuestions(widget.exerciseNumber);
+    _questionsFuture = _fetchQuestions();
     _fetchExerciseTitle();
     _startTimer();
   }
 
+  Future<List<Question>> _fetchQuestions() async {
+    final questionData = await DatabaseHelper.getExerciseQuestions(widget.exerciseId);
+    if (questionData.isEmpty) {
+      throw Exception("No questions found for this exercise in local storage.");
+    }
+    return questionData.map((json) => Question.fromJson(json)).toList();
+  }
+
+  Future<void> _fetchExerciseTitle() async {
+    final exercises = await DatabaseHelper.getDownloadedExercises();
+    final exercise = exercises.firstWhere(
+      (e) => e['exerciseId'] == widget.exerciseId,
+      orElse: () => {'title': 'Untitled Exercise'},
+    );
+    if (_isMounted && mounted) {
+      setState(() {
+        _exerciseTitle = exercise['title'] ?? "Untitled Exercise";
+      });
+    }
+  }
+
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_isMounted) {
+      if (_isMounted && mounted) {
         setState(() {
           _elapsedTime++;
         });
       }
     });
-  }
-
-  Future<void> _fetchExerciseTitle() async {
-    try {
-      final exercise = await _firestoreService.getExerciseById(widget.exerciseNumber);
-      if (_isMounted) {
-        setState(() {
-          _exerciseTitle = exercise?['title'] ?? "Untitled Exercise";
-        });
-      }
-    } catch (e) {
-      if (_isMounted) {
-        setState(() {
-          _exerciseTitle = "Error loading title";
-        });
-      }
-    }
   }
 
   @override
@@ -74,10 +78,10 @@ class _ExercisePageState extends State<ExercisePage> with AutomaticKeepAliveClie
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return WillPopScope(
-      onWillPop: () async => false, // ❌ Disable back navigation (left swipe)
+      onWillPop: () async => false,
       child: Scaffold(
         appBar: AppBar(
-          automaticallyImplyLeading: false, // ❌ Remove default back button
+          automaticallyImplyLeading: false,
           title: Text(_exerciseTitle),
           leading: IconButton(
             icon: const Icon(Icons.cancel),
@@ -117,8 +121,14 @@ class _ExercisePageState extends State<ExercisePage> with AutomaticKeepAliveClie
         body: FutureBuilder<List<Question>>(
           future: _questionsFuture,
           builder: (context, snapshot) {
-            if (!snapshot.hasData) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CupertinoActivityIndicator(radius: 15));
+            }
+            if (snapshot.hasError) {
+              return Center(child: Text("Error: ${snapshot.error}"));
+            }
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return const Center(child: Text("No questions available."));
             }
 
             final questions = snapshot.data!;
@@ -129,9 +139,7 @@ class _ExercisePageState extends State<ExercisePage> with AutomaticKeepAliveClie
                 final question = questions[index];
                 return Card(
                   elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16.0),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
                   color: isDarkMode ? Colors.grey[900] : Colors.white,
                   margin: const EdgeInsets.symmetric(vertical: 8.0),
                   child: Padding(
@@ -157,7 +165,7 @@ class _ExercisePageState extends State<ExercisePage> with AutomaticKeepAliveClie
                                   value: option,
                                   groupValue: _selectedAnswers[index],
                                   onChanged: (value) {
-                                    if (_isMounted) {
+                                    if (_isMounted && mounted) {
                                       setState(() {
                                         _selectedAnswers[index] = value!;
                                       });
@@ -237,24 +245,29 @@ class _ExercisePageState extends State<ExercisePage> with AutomaticKeepAliveClie
     );
   }
 
- // exercise_page.dart (snippet)
-void _navigateToResultPage() {
-  _questionsFuture.then((questions) {
-    if (_isMounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ResultPage(
-            questions: questions,
-            selectedAnswers: _selectedAnswers,
-            timeTaken: _elapsedTime,
-            exerciseId: widget.exerciseNumber, 
+  void _navigateToResultPage() {
+    _questionsFuture.then((questions) {
+      if (_isMounted && mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ResultPageOffline(
+              questions: questions,
+              selectedAnswers: _selectedAnswers,
+              timeTaken: _elapsedTime,
+              exerciseId: widget.exerciseId,
+            ),
           ),
-        ),
-      );
-    }
-  });
-}
+        );
+      }
+    }).catchError((e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error loading results: $e")),
+        );
+      }
+    });
+  }
 
   @override
   bool get wantKeepAlive => true;

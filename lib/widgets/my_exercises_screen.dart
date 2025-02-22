@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:my_exercises/screens/home_screen_detail_online.dart';
 import 'package:my_exercises/widgets/edit_exercise_page.dart';
-import 'package:my_exercises/widgets/home_screen_detail.dart';
 import '../data/firestore_service.dart';
 import 'create_exercise_page.dart';
 
@@ -299,7 +297,7 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => HomeScreenDetail(exerciseId: exerciseId),
+        builder: (context) => HomeScreenDetailOnline(exerciseId: exerciseId),
       ),
     );
     _fetchExercises();
