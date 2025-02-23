@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:my_exercises/data/auth_service.dart';
 
 class EditExerciseWidget extends StatefulWidget {
   final String exerciseId;
@@ -18,7 +19,7 @@ class EditExerciseWidget extends StatefulWidget {
   State<EditExerciseWidget> createState() => _EditExerciseWidgetState();
 }
 
-class _EditExerciseWidgetState extends State<EditExerciseWidget> {
+class _EditExerciseWidgetState extends State<EditExerciseWidget> with TickerProviderStateMixin {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   bool _isShared = false;
@@ -28,7 +29,6 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
   final List<Map<String, dynamic>> _newQuestions = [];
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  // 🔥 Categories
   final List<String> _allCategories = [
     'Math',
     'Science',
@@ -47,6 +47,9 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
   bool _isCategoryExpanded = false;
   bool _showCategoryError = false;
 
+  late AnimationController _snackAnimationController;
+  late Animation<double> _snackAnimation;
+
   @override
   void initState() {
     super.initState();
@@ -54,20 +57,30 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
     _isShared = widget.shared;
     _fetchExerciseDetails();
     _fetchQuestions();
+
+    _snackAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _snackAnimation = CurvedAnimation(parent: _snackAnimationController, curve: Curves.easeIn);
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _snackAnimationController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchExerciseDetails() async {
     try {
-      DocumentSnapshot exerciseDoc =
-          await _firestore.collection('exercises').doc(widget.exerciseId).get();
+      DocumentSnapshot exerciseDoc = await _firestore.collection('exercises').doc(widget.exerciseId).get();
 
       if (exerciseDoc.exists) {
         setState(() {
-          _descriptionController.text =
-              exerciseDoc['description'] ?? ''; // Load description
-          _selectedCategories.addAll(
-            List<String>.from(exerciseDoc['categories'] ?? []),
-          );
+          _descriptionController.text = exerciseDoc['description'] ?? '';
+          _selectedCategories.addAll(List<String>.from(exerciseDoc['categories'] ?? []));
         });
       }
     } catch (e) {
@@ -93,7 +106,7 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
             'C': doc['C'],
             'D': doc['D'],
             'correctAnswer': doc['correctAnswer'],
-            'expanded': false, // To control the initial expansion state
+            'expanded': false,
           };
         }).toList();
       });
@@ -107,16 +120,14 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
       context: context,
       builder: (context) => CupertinoAlertDialog(
         title: const Text('Delete Exercise'),
-        content: const Text(
-          'Are you sure you want to delete this exercise? This action cannot be undone.',
-        ),
+        content: const Text('Are you sure you want to delete this exercise? This action cannot be undone.'),
         actions: [
           CupertinoDialogAction(
             child: const Text('Cancel'),
             onPressed: () => Navigator.of(context).pop(false),
           ),
           CupertinoDialogAction(
-            isDestructiveAction: true, // Makes text red for delete
+            isDestructiveAction: true,
             child: const Text('Delete'),
             onPressed: () => Navigator.of(context).pop(true),
           ),
@@ -127,7 +138,6 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
     if (confirmDelete != true) return;
 
     try {
-      // Delete all questions associated with this exercise
       QuerySnapshot questionSnapshot = await _firestore
           .collection('exercises')
           .doc(widget.exerciseId)
@@ -138,12 +148,55 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
         await doc.reference.delete();
       }
 
-      // Delete the exercise itself
       await _firestore.collection('exercises').doc(widget.exerciseId).delete();
 
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   const SnackBar(content: Text('Exercise deleted successfully!')),
-      // );
+      if (mounted) {
+        _snackAnimationController.forward(from: 0);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 4),
+            backgroundColor: Colors.transparent,
+            content: FadeTransition(
+              opacity: _snackAnimation,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: Theme.of(context).brightness == Brightness.dark
+                        ? [Colors.blueGrey[900]!, Colors.blueGrey[700]!]
+                        : [Colors.red[100]!, Colors.red[300]!], // Red gradient for delete (to indicate action)
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      offset: const Offset(0, 2),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Exercise deleted successfully!",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+        debugPrint("Exercise deleted, showing compact animated SnackBar");
+      }
 
       Navigator.pop(context);
     } catch (e) {
@@ -222,7 +275,54 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
         });
       }
 
-      //_showToast(context, 'Exercise updated successfully!');
+      if (mounted) {
+        _snackAnimationController.forward(from: 0);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 4),
+            backgroundColor: Colors.transparent,
+            content: FadeTransition(
+              opacity: _snackAnimation,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: Theme.of(context).brightness == Brightness.dark
+                        ? [Colors.blueGrey[900]!, Colors.blueGrey[700]!]
+                        : [Colors.green[100]!, Colors.green[300]!], // Green gradient for success
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      offset: const Offset(0, 2),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Exercise updated successfully!",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+        debugPrint("Exercise updated, showing compact animated SnackBar");
+      }
+
       Navigator.pop(context);
     } catch (e) {
       print('Error updating exercise: $e');
@@ -230,22 +330,19 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
     }
   }
 
-  Future<void> _deleteQuestion(Map<String, dynamic> question,
-      {bool isNew = false}) async {
+  Future<void> _deleteQuestion(Map<String, dynamic> question, {bool isNew = false}) async {
     bool confirmDelete = await showCupertinoDialog(
       context: context,
       builder: (context) => CupertinoAlertDialog(
         title: const Text('Delete Question'),
-        content: const Text(
-          'Are you sure you want to delete this question?',
-        ),
+        content: const Text('Are you sure you want to delete this question?'),
         actions: [
           CupertinoDialogAction(
             child: const Text('Cancel'),
             onPressed: () => Navigator.of(context).pop(false),
           ),
           CupertinoDialogAction(
-            isDestructiveAction: true, // Makes text red for delete
+            isDestructiveAction: true,
             child: const Text('Delete'),
             onPressed: () => Navigator.of(context).pop(true),
           ),
@@ -272,7 +369,53 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
           _questions.remove(question);
         });
 
-        //_showToast(context, 'Question deleted successfully!');
+        if (mounted) {
+          _snackAnimationController.forward(from: 0);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              duration: const Duration(seconds: 4),
+              backgroundColor: Colors.transparent,
+              content: FadeTransition(
+                opacity: _snackAnimation,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: Theme.of(context).brightness == Brightness.dark
+                          ? [Colors.blueGrey[900]!, Colors.blueGrey[700]!]
+                          : [Colors.red[100]!, Colors.red[300]!], // Red gradient for delete
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        offset: const Offset(0, 2),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Question deleted successfully!",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+          debugPrint("Question deleted, showing compact animated SnackBar");
+        }
       } catch (e) {
         print('Error deleting question: $e');
         _showToast(context, 'Error deleting question: $e');
@@ -289,7 +432,7 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
         'C': '',
         'D': '',
         'correctAnswer': '',
-        'expanded': true, // Automatically expand new questions
+        'expanded': true,
       });
     });
   }
@@ -332,16 +475,12 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GestureDetector(
-          onTap: () =>
-              setState(() => _isCategoryExpanded = !_isCategoryExpanded),
+          onTap: () => setState(() => _isCategoryExpanded = !_isCategoryExpanded),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Select Categories:',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              Icon(_isCategoryExpanded
-                  ? Icons.keyboard_arrow_up
-                  : Icons.keyboard_arrow_down),
+              const Text('Select Categories:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Icon(_isCategoryExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
             ],
           ),
         ),
@@ -353,30 +492,17 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
               return ChoiceChip(
                 label: Text(category),
                 selected: isSelected,
-                selectedColor: isDarkMode
-                    ? Colors.purpleAccent
-                        .withOpacity(0.3) // Purple tint in dark mode
-                    : Colors.blue, // Blue in light mode
-                backgroundColor: isDarkMode
-                    ? Colors.grey[850] // Dark gray background in dark mode
-                    : Colors.grey[300], // Light gray background in light mode
+                selectedColor: isDarkMode ? Colors.purpleAccent.withOpacity(0.3) : Colors.blue,
+                backgroundColor: isDarkMode ? Colors.grey[850] : Color.fromRGBO(254, 247, 255, 1),
                 labelStyle: TextStyle(
-                  color: isSelected
-                      ? Colors.white // White text when selected
-                      : (isDarkMode
-                          ? Colors.grey[400]
-                          : Colors.black), // Light gray in dark mode
+                  color: isSelected ? Colors.white : (isDarkMode ? Colors.grey[400] : Colors.black),
                   fontWeight: FontWeight.bold,
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: BorderSide(
-                    color: isSelected
-                        ? (isDarkMode ? Colors.purpleAccent : Colors.blue)
-                        : (isDarkMode ? Colors.grey[700]! : Colors.grey[400]!),
-                    width: isSelected
-                        ? 2
-                        : 1, // Slightly thicker border when selected
+                    color: isSelected ? (isDarkMode ? Colors.purpleAccent : Colors.blue) : (isDarkMode ? Colors.grey[700]! : Colors.grey[400]!),
+                    width: isSelected ? 2 : 1,
                   ),
                 ),
                 onSelected: (selected) {
@@ -395,10 +521,7 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
         if (_showCategoryError)
           const Padding(
             padding: EdgeInsets.only(top: 8.0),
-            child: Text(
-              'Please select at least one category!',
-              style: TextStyle(color: Colors.red, fontSize: 14),
-            ),
+            child: Text('Please select at least one category!', style: TextStyle(color: Colors.red, fontSize: 14)),
           ),
       ],
     );
@@ -408,17 +531,10 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
-          'Share Exercise',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
+        const Text('Share Exercise', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         Switch(
           value: _isShared,
-          onChanged: (value) {
-            setState(() {
-              _isShared = value;
-            });
-          },
+          onChanged: (value) => setState(() => _isShared = value),
         ),
       ],
     );
@@ -426,13 +542,14 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Exercise'),
         actions: [
           IconButton(
-            icon: const Icon(CupertinoIcons.trash,
-                color: Colors.redAccent, size: 22),
+            icon: const Icon(CupertinoIcons.trash, color: Colors.redAccent, size: 22),
             onPressed: _deleteExercise,
           ),
           IconButton(
@@ -450,16 +567,9 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
               TextFormField(
                 controller: _titleController,
                 decoration: const InputDecoration(labelText: 'Exercise Title'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Exercise title cannot be empty';
-                  }
-                  return null;
-                },
+                validator: (value) => value == null || value.isEmpty ? 'Exercise title cannot be empty' : null,
               ),
               const SizedBox(height: 16),
-
-              // New Description Field
               TextFormField(
                 controller: _descriptionController,
                 maxLines: null,
@@ -468,38 +578,15 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
                   hintText: 'Enter a description for the exercise',
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Exercise description cannot be empty';
-                  }
-                  return null;
-                },
+                validator: (value) => value == null || value.isEmpty ? 'Exercise description cannot be empty' : null,
               ),
-
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Share Exercise',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  Switch(
-                    value: _isShared,
-                    onChanged: (value) {
-                      setState(() {
-                        _isShared = value;
-                      });
-                    },
-                  ),
-                ],
-              ),
+              _buildShareToggle(),
               const Divider(height: 24),
               _buildCategorySelection(),
               const Divider(height: 24),
               ..._questions.map((question) => _buildQuestionTile(question)),
-              ..._newQuestions
-                  .map((question) => _buildQuestionTile(question, isNew: true)),
+              ..._newQuestions.map((question) => _buildQuestionTile(question, isNew: true)),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _addNewQuestion,
@@ -512,8 +599,7 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
     );
   }
 
-  Widget _buildQuestionTile(Map<String, dynamic> question,
-      {bool isNew = false}) {
+  Widget _buildQuestionTile(Map<String, dynamic> question, {bool isNew = false}) {
     return ExpansionTile(
       initiallyExpanded: question['expanded'] ?? false,
       title: Row(
@@ -521,9 +607,7 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
         children: [
           Expanded(
             child: Text(
-              question['questionText'].isEmpty
-                  ? 'New Question'
-                  : question['questionText'],
+              question['questionText'].isEmpty ? 'New Question' : question['questionText'],
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               overflow: TextOverflow.ellipsis,
             ),
@@ -532,11 +616,7 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
             onTap: () => _deleteQuestion(question, isNew: isNew),
             child: Container(
               padding: const EdgeInsets.all(8),
-              child: const Icon(
-                CupertinoIcons.trash_fill, // Trash bin icon (more modern)
-                color: Colors.redAccent, // Vibrant red color
-                size: 22, // Slightly larger for better visibility
-              ),
+              child: const Icon(CupertinoIcons.trash_fill, color: Colors.redAccent, size: 22),
             ),
           ),
         ],
@@ -553,99 +633,51 @@ class _EditExerciseWidgetState extends State<EditExerciseWidget> {
           TextFormField(
             initialValue: question['questionText'],
             maxLines: null,
-            decoration: const InputDecoration(
-              labelText: 'Question Text',
-              border: OutlineInputBorder(),
-            ),
+            decoration: const InputDecoration(labelText: 'Question Text', border: OutlineInputBorder()),
             onChanged: (value) => question['questionText'] = value,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Question text cannot be empty';
-              }
-              return null;
-            },
+            validator: (value) => value == null || value.isEmpty ? 'Question text cannot be empty' : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
             initialValue: question['A'],
             maxLines: null,
-            decoration: const InputDecoration(
-              labelText: 'Option A',
-              border: OutlineInputBorder(),
-            ),
+            decoration: const InputDecoration(labelText: 'Option A', border: OutlineInputBorder()),
             onChanged: (value) => question['A'] = value,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Option A cannot be empty';
-              }
-              return null;
-            },
+            validator: (value) => value == null || value.isEmpty ? 'Option A cannot be empty' : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
             initialValue: question['B'],
             maxLines: null,
-            decoration: const InputDecoration(
-              labelText: 'Option B',
-              border: OutlineInputBorder(),
-            ),
+            decoration: const InputDecoration(labelText: 'Option B', border: OutlineInputBorder()),
             onChanged: (value) => question['B'] = value,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Option B cannot be empty';
-              }
-              return null;
-            },
+            validator: (value) => value == null || value.isEmpty ? 'Option B cannot be empty' : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
             initialValue: question['C'],
             maxLines: null,
-            decoration: const InputDecoration(
-              labelText: 'Option C',
-              border: OutlineInputBorder(),
-            ),
+            decoration: const InputDecoration(labelText: 'Option C', border: OutlineInputBorder()),
             onChanged: (value) => question['C'] = value,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Option C cannot be empty';
-              }
-              return null;
-            },
+            validator: (value) => value == null || value.isEmpty ? 'Option C cannot be empty' : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
             initialValue: question['D'],
             maxLines: null,
-            decoration: const InputDecoration(
-              labelText: 'Option D',
-              border: OutlineInputBorder(),
-            ),
+            decoration: const InputDecoration(labelText: 'Option D', border: OutlineInputBorder()),
             onChanged: (value) => question['D'] = value,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Option D cannot be empty';
-              }
-              return null;
-            },
+            validator: (value) => value == null || value.isEmpty ? 'Option D cannot be empty' : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
             initialValue: question['correctAnswer'],
             maxLines: null,
-            decoration: const InputDecoration(
-              labelText: 'Correct Answer (A, B, C, or D)',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (value) =>
-                question['correctAnswer'] = value.toUpperCase(),
+            decoration: const InputDecoration(labelText: 'Correct Answer (A, B, C, or D)', border: OutlineInputBorder()),
+            onChanged: (value) => question['correctAnswer'] = value.toUpperCase(),
             validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Correct answer cannot be empty';
-              }
-              if (!['A', 'B', 'C', 'D'].contains(value.toUpperCase())) {
-                return 'Correct answer must be one of: A, B, C, or D';
-              }
+              if (value == null || value.isEmpty) return 'Correct answer cannot be empty';
+              if (!['A', 'B', 'C', 'D'].contains(value.toUpperCase())) return 'Correct answer must be one of: A, B, C, or D';
               return null;
             },
           ),

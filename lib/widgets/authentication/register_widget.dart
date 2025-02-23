@@ -10,7 +10,7 @@ class RegisterWidget extends StatefulWidget {
   RegisterWidgetState createState() => RegisterWidgetState();
 }
 
-class RegisterWidgetState extends State<RegisterWidget> {
+class RegisterWidgetState extends State<RegisterWidget> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -20,11 +20,25 @@ class RegisterWidgetState extends State<RegisterWidget> {
   bool _isTermsAccepted = false;
   bool _isLoading = false;
 
+  late AnimationController _snackAnimationController;
+  late Animation<double> _snackAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _snackAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _snackAnimation = CurvedAnimation(parent: _snackAnimationController, curve: Curves.easeIn);
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _snackAnimationController.dispose();
     super.dispose();
   }
 
@@ -48,6 +62,54 @@ class RegisterWidgetState extends State<RegisterWidget> {
         });
 
         if (success) {
+          if (mounted) {
+            _snackAnimationController.forward(from: 0);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                duration: const Duration(seconds: 4),
+                backgroundColor: Colors.transparent,
+                content: FadeTransition(
+                  opacity: _snackAnimation,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: Theme.of(context).brightness == Brightness.dark
+                            ? [Colors.blueGrey[900]!, Colors.blueGrey[700]!]
+                            : [Colors.green[100]!, Colors.green[300]!],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black26,
+                          offset: const Offset(0, 2),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Registration successful!",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+            debugPrint("Registration successful, showing compact animated SnackBar");
+          }
+
           // ✅ Registration successful → Navigate to Login Page
           Navigator.pushReplacementNamed(context, '/login');
         } else {
@@ -112,8 +174,7 @@ class RegisterWidgetState extends State<RegisterWidget> {
                           controller: _nameController,
                           label: "Name",
                           icon: Icons.person_outline,
-                          validator: (value) =>
-                              value == null || value.trim().isEmpty ? 'Please enter your name' : null,
+                          validator: (value) => value == null || value.trim().isEmpty ? 'Please enter your name' : null,
                         ),
                         const SizedBox(height: 16),
                         _buildInputField(
@@ -154,9 +215,7 @@ class RegisterWidgetState extends State<RegisterWidget> {
                     children: [
                       Checkbox(
                         value: _isTermsAccepted,
-                        onChanged: (value) {
-                          setState(() => _isTermsAccepted = value ?? false);
-                        },
+                        onChanged: (value) => setState(() => _isTermsAccepted = value ?? false),
                       ),
                       Expanded(
                         child: GestureDetector(
@@ -207,10 +266,7 @@ class RegisterWidgetState extends State<RegisterWidget> {
                       const Text("Already have an account? "),
                       GestureDetector(
                         onTap: () => Navigator.pushNamed(context, '/login'),
-                        child: const Text(
-                          'Login',
-                          style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
-                        ),
+                        child: const Text('Login', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -222,9 +278,7 @@ class RegisterWidgetState extends State<RegisterWidget> {
             if (_isLoading)
               Container(
                 color: Colors.black.withOpacity(0.3),
-                child: const Center(
-                  child: CupertinoActivityIndicator(radius: 15), // ✅ iOS-style loading spinner
-                ),
+                child: const Center(child: CupertinoActivityIndicator(radius: 15)),
               ),
           ],
         ),

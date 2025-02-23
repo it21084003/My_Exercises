@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:my_exercises/widgets/exercises/my_exercises_widget.dart';
 import '../../screens/home/home_screen.dart';
-//import 'my_exercises_screen.dart';
 import '../../screens/settings/settings_page.dart';
 
 class HomeWidget extends StatefulWidget {

@@ -8,6 +8,7 @@ import 'widgets/navigation/home_widget.dart';
 import 'widgets/categories/select_categories_widget.dart';
 import 'config/firebase_options.dart';
 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);

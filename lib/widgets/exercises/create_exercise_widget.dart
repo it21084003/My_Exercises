@@ -10,17 +10,16 @@ class CreateExerciseWidget extends StatefulWidget {
   State<CreateExerciseWidget> createState() => _CreateExerciseWidgetState();
 }
 
-class _CreateExerciseWidgetState extends State<CreateExerciseWidget> {
+class _CreateExerciseWidgetState extends State<CreateExerciseWidget> with TickerProviderStateMixin {
   final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _descriptionController =
-      TextEditingController(); // Add description controller
+  final TextEditingController _descriptionController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AuthService _authService = AuthService();
 
   final List<Map<String, dynamic>> _questions = [];
-  bool _isShared = false; // Default shared status
+  bool _isShared = false;
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  bool _showQuestionError = false; // To control red border for the button
+  bool _showQuestionError = false;
   bool _showCategoryError = false;
 
   final List<String> _allCategories = [
@@ -40,6 +39,27 @@ class _CreateExerciseWidgetState extends State<CreateExerciseWidget> {
   final Set<String> _selectedCategories = {};
   bool _isCategoryExpanded = false;
 
+  late AnimationController _snackAnimationController;
+  late Animation<double> _snackAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _snackAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _snackAnimation = CurvedAnimation(parent: _snackAnimationController, curve: Curves.easeIn);
+  }
+
+  @override
+  void dispose() {
+    _snackAnimationController.dispose();
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
   void _addQuestion() {
     setState(() {
       _questions.add({
@@ -49,9 +69,9 @@ class _CreateExerciseWidgetState extends State<CreateExerciseWidget> {
         'C': '',
         'D': '',
         'correctAnswer': '',
-        'expanded': true, // Auto-expand new questions
+        'expanded': true,
       });
-      _showQuestionError = false; // Remove error when a question is added
+      _showQuestionError = false;
     });
   }
 
@@ -69,7 +89,7 @@ class _CreateExerciseWidgetState extends State<CreateExerciseWidget> {
 
     if (_questions.isEmpty) {
       setState(() {
-        _showQuestionError = true; // Show red border on the button
+        _showQuestionError = true;
       });
       return;
     }
@@ -78,8 +98,7 @@ class _CreateExerciseWidgetState extends State<CreateExerciseWidget> {
       final user = _authService.currentUser;
       if (user == null) throw Exception('User not logged in.');
 
-      DocumentSnapshot userDoc =
-          await _firestore.collection('users').doc(user.uid).get();
+      DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
       final username = userDoc['username'] ?? user.email;
 
       final exerciseDoc = await _firestore.collection('exercises').add({
@@ -89,7 +108,7 @@ class _CreateExerciseWidgetState extends State<CreateExerciseWidget> {
         'creatorUsername': username,
         'downloadedCount': 0,
         'shared': _isShared,
-        'categories': _selectedCategories.toList(), // 🔥 Now saving categories
+        'categories': _selectedCategories.toList(),
         'timestamp': Timestamp.now(),
       });
 
@@ -104,9 +123,53 @@ class _CreateExerciseWidgetState extends State<CreateExerciseWidget> {
         });
       }
 
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   const SnackBar(content: Text('Exercise created successfully!')),
-      // );
+      if (mounted) {
+        _snackAnimationController.forward(from: 0);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 4),
+            backgroundColor: Colors.transparent,
+            content: FadeTransition(
+              opacity: _snackAnimation,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: Theme.of(context).brightness == Brightness.dark
+                        ? [Colors.blueGrey[900]!, Colors.blueGrey[700]!]
+                        : [Colors.green[100]!, Colors.green[300]!],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      offset: const Offset(0, 2),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Exercise created successfully!",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+        debugPrint("Exercise created, showing compact animated SnackBar");
+      }
 
       Navigator.pop(context, true);
     } catch (e) {
@@ -117,95 +180,74 @@ class _CreateExerciseWidgetState extends State<CreateExerciseWidget> {
     }
   }
 
- Widget _buildCategorySelection() {
-  final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+  Widget _buildCategorySelection() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      GestureDetector(
-        onTap: () => setState(() => _isCategoryExpanded = !_isCategoryExpanded),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('Select Categories:',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            Icon(_isCategoryExpanded
-                ? Icons.keyboard_arrow_up
-                : Icons.keyboard_arrow_down),
-          ],
-        ),
-      ),
-      if (_isCategoryExpanded)
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: _allCategories.map((category) {
-            final isSelected = _selectedCategories.contains(category);
-            return ChoiceChip(
-              label: Text(category),
-              selected: isSelected,
-              selectedColor: isDarkMode
-                  ? Colors.purpleAccent.withOpacity(0.3) // Purple tint in dark mode
-                  : Colors.blue, // Blue in light mode
-              backgroundColor: isDarkMode
-                  ? Colors.grey[850] // Dark gray background in dark mode
-                  : Colors.grey[300], // Light gray background in light mode
-              labelStyle: TextStyle(
-                color: isSelected
-                    ? Colors.white // White text when selected
-                    : (isDarkMode ? Colors.grey[400] : Colors.black), // Light gray in dark mode
-                fontWeight: FontWeight.bold,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(
-                  color: isSelected
-                      ? (isDarkMode ? Colors.purpleAccent : Colors.blue)
-                      : (isDarkMode ? Colors.grey[700]! : Colors.grey[400]!),
-                  width: isSelected ? 2 : 1, // Slightly thicker border when selected
-                ),
-              ),
-              onSelected: (selected) {
-                setState(() {
-                  if (selected) {
-                    _selectedCategories.add(category);
-                  } else {
-                    _selectedCategories.remove(category);
-                  }
-                  _showCategoryError = _selectedCategories.isEmpty;
-                });
-              },
-            );
-          }).toList(),
-        ),
-      if (_showCategoryError)
-        const Padding(
-          padding: EdgeInsets.only(top: 8.0),
-          child: Text(
-            'Please select at least one category!',
-            style: TextStyle(color: Colors.red, fontSize: 14),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () => setState(() => _isCategoryExpanded = !_isCategoryExpanded),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Select Categories:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Icon(_isCategoryExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
+            ],
           ),
         ),
-    ],
-  );
-}
+        if (_isCategoryExpanded)
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _allCategories.map((category) {
+              final isSelected = _selectedCategories.contains(category);
+              return ChoiceChip(
+                label: Text(category),
+                selected: isSelected,
+                selectedColor: isDarkMode ? Colors.purpleAccent.withOpacity(0.3) : Colors.blue,
+                backgroundColor: isDarkMode ? Colors.grey[850] : Colors.grey[300],
+                labelStyle: TextStyle(
+                  color: isSelected ? Colors.white : (isDarkMode ? Colors.grey[400] : Colors.black),
+                  fontWeight: FontWeight.bold,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(
+                    color: isSelected ? (isDarkMode ? Colors.purpleAccent : Colors.blue) : (isDarkMode ? Colors.grey[700]! : Colors.grey[400]!),
+                    width: isSelected ? 2 : 1,
+                  ),
+                ),
+                onSelected: (selected) {
+                  setState(() {
+                    if (selected) {
+                      _selectedCategories.add(category);
+                    } else {
+                      _selectedCategories.remove(category);
+                    }
+                    _showCategoryError = _selectedCategories.isEmpty;
+                  });
+                },
+              );
+            }).toList(),
+          ),
+        if (_showCategoryError)
+          const Padding(
+            padding: EdgeInsets.only(top: 8.0),
+            child: Text('Please select at least one category!', style: TextStyle(color: Colors.red, fontSize: 14)),
+          ),
+      ],
+    );
+  }
 
   Widget _buildShareToggle() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
-          'Share Exercise',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
+        const Text('Share Exercise', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         Switch(
           value: _isShared,
-          onChanged: (value) {
-            setState(() {
-              _isShared = value;
-            });
-          },
+          onChanged: (value) => setState(() => _isShared = value),
         ),
       ],
     );
@@ -222,21 +264,14 @@ class _CreateExerciseWidgetState extends State<CreateExerciseWidget> {
           children: [
             Expanded(
               child: Text(
-                question['questionText'].isEmpty
-                    ? 'New Question'
-                    : question['questionText'],
-                style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                question['questionText'].isEmpty ? 'New Question' : question['questionText'],
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             IconButton(
               icon: const Icon(CupertinoIcons.trash, color: Colors.redAccent, size: 22),
-              onPressed: () {
-                setState(() {
-                  _questions.removeAt(index);
-                });
-              },
+              onPressed: () => setState(() => _questions.removeAt(index)),
             ),
           ],
         ),
@@ -250,22 +285,15 @@ class _CreateExerciseWidgetState extends State<CreateExerciseWidget> {
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
-          _buildTextField(
-              label: 'Question Text',
-              questionKey: 'questionText',
-              question: question),
+          _buildTextField(label: 'Question Text', questionKey: 'questionText', question: question),
           const SizedBox(height: 8),
-          _buildTextField(
-              label: 'Option A', questionKey: 'A', question: question),
+          _buildTextField(label: 'Option A', questionKey: 'A', question: question),
           const SizedBox(height: 8),
-          _buildTextField(
-              label: 'Option B', questionKey: 'B', question: question),
+          _buildTextField(label: 'Option B', questionKey: 'B', question: question),
           const SizedBox(height: 8),
-          _buildTextField(
-              label: 'Option C', questionKey: 'C', question: question),
+          _buildTextField(label: 'Option C', questionKey: 'C', question: question),
           const SizedBox(height: 8),
-          _buildTextField(
-              label: 'Option D', questionKey: 'D', question: question),
+          _buildTextField(label: 'Option D', questionKey: 'D', question: question),
           const SizedBox(height: 8),
           TextFormField(
             initialValue: question['correctAnswer'],
@@ -275,18 +303,10 @@ class _CreateExerciseWidgetState extends State<CreateExerciseWidget> {
               hintText: 'Enter A, B, C, or D',
               border: OutlineInputBorder(),
             ),
-            onChanged: (value) {
-              setState(() {
-                question['correctAnswer'] = value.toUpperCase();
-              });
-            },
+            onChanged: (value) => setState(() => question['correctAnswer'] = value.toUpperCase()),
             validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Correct answer cannot be empty';
-              }
-              if (!['A', 'B', 'C', 'D'].contains(value.toUpperCase())) {
-                return 'Correct answer must be A, B, C, or D';
-              }
+              if (value == null || value.isEmpty) return 'Correct answer cannot be empty';
+              if (!['A', 'B', 'C', 'D'].contains(value.toUpperCase())) return 'Correct answer must be A, B, C, or D';
               return null;
             },
           ),
@@ -303,24 +323,16 @@ class _CreateExerciseWidgetState extends State<CreateExerciseWidget> {
     return TextFormField(
       initialValue: question[questionKey],
       maxLines: null,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-      ),
-      onChanged: (value) => setState(() {
-        question[questionKey] = value;
-      }),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return '$label cannot be empty';
-        }
-        return null;
-      },
+      decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),
+      onChanged: (value) => setState(() => question[questionKey] = value),
+      validator: (value) => value == null || value.isEmpty ? '$label cannot be empty' : null,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create Exercise'),
@@ -339,74 +351,45 @@ class _CreateExerciseWidgetState extends State<CreateExerciseWidget> {
             children: [
               TextFormField(
                 controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Exercise Title',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Exercise title cannot be empty';
-                  }
-                  return null;
-                },
+                decoration: const InputDecoration(labelText: 'Exercise Title', border: OutlineInputBorder()),
+                validator: (value) => value == null || value.isEmpty ? 'Exercise title cannot be empty' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _descriptionController,
-                maxLines: null, // 🔥 Allows auto-expanding
-                keyboardType:
-                    TextInputType.multiline, // 🔥 Enables multiline input
-                decoration: const InputDecoration(
-                  labelText: 'Exercise Description',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Exercise description cannot be empty';
-                  }
-                  return null;
-                },
+                maxLines: null,
+                keyboardType: TextInputType.multiline,
+                decoration: const InputDecoration(labelText: 'Exercise Description', border: OutlineInputBorder()),
+                validator: (value) => value == null || value.isEmpty ? 'Exercise description cannot be empty' : null,
               ),
               const SizedBox(height: 10),
               _buildShareToggle(),
               const Divider(height: 20),
               _buildCategorySelection(),
               const Divider(height: 20),
-              ..._questions
-                  .asMap()
-                  .entries
-                  .map((entry) => _buildQuestionTile(entry.value, entry.key)),
+              ..._questions.asMap().entries.map((entry) => _buildQuestionTile(entry.value, entry.key)),
               const SizedBox(height: 16),
               Column(
                 children: [
                   Container(
-                    width: double.infinity, // Make the button full-width
+                    width: double.infinity,
                     decoration: BoxDecoration(
-                      border: _showQuestionError
-                          ? Border.all(color: Colors.red, width: 2)
-                          : null,
+                      border: _showQuestionError ? Border.all(color: Colors.red, width: 2) : null,
                       borderRadius: BorderRadius.circular(50),
                     ),
                     child: ElevatedButton(
                       onPressed: _addQuestion,
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 12), // Adjust height
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(50),
-                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
                       ),
-                      child: const Text('Add New Question',
-                          style: TextStyle(fontSize: 16)),
+                      child: const Text('Add New Question', style: TextStyle(fontSize: 16)),
                     ),
                   ),
                   if (_showQuestionError)
                     const Padding(
                       padding: EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        'Please add at least one question.',
-                        style: TextStyle(color: Colors.red, fontSize: 14),
-                      ),
+                      child: Text('Please add at least one question.', style: TextStyle(color: Colors.red, fontSize: 14)),
                     ),
                 ],
               ),

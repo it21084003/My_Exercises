@@ -101,7 +101,7 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
 
     return Scaffold(
       // Set background color based on theme
-      backgroundColor: isDarkMode ? Colors.black : Colors.white,
+      backgroundColor: isDarkMode ? Colors.black : const Color.fromRGBO(254, 247, 255, 1),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(10.0),

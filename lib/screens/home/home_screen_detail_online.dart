@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:my_exercises/screens/exercises/my_exercises_screen.dart';
 import 'package:my_exercises/widgets/exercises/downloaded_exercises_widget.dart';
 import '../../data/firestore_service.dart';
 import '../../data/offline_database_helper.dart';
@@ -17,7 +18,8 @@ class HomeScreenDetailOnline extends StatefulWidget {
   State<HomeScreenDetailOnline> createState() => _HomeScreenDetailOnlineState();
 }
 
-class _HomeScreenDetailOnlineState extends State<HomeScreenDetailOnline> with TickerProviderStateMixin {
+class _HomeScreenDetailOnlineState extends State<HomeScreenDetailOnline>
+    with TickerProviderStateMixin {
   final FirestoreService _firestoreService = FirestoreService();
   String _title = "Loading...";
   String _description = "Fetching details...";
@@ -39,20 +41,20 @@ class _HomeScreenDetailOnlineState extends State<HomeScreenDetailOnline> with Ti
     _fetchExerciseDetails();
     _checkIfDownloaded();
 
-    // Animation setup for card (fade-in)
     _cardAnimationController = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-    _cardAnimation = CurvedAnimation(parent: _cardAnimationController, curve: Curves.easeInOut);
+    _cardAnimation = CurvedAnimation(
+        parent: _cardAnimationController, curve: Curves.easeInOut);
     _cardAnimationController.forward();
 
-    // Animation setup for SnackBar (fade-in)
     _snackAnimationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    _snackAnimation = CurvedAnimation(parent: _snackAnimationController, curve: Curves.easeIn);
+    _snackAnimation = CurvedAnimation(
+        parent: _snackAnimationController, curve: Curves.easeIn);
   }
 
   @override
@@ -145,7 +147,8 @@ class _HomeScreenDetailOnlineState extends State<HomeScreenDetailOnline> with Ti
         final questions = await _firestoreService.fetchExerciseQuestions(widget.exerciseId);
         final questionData = questions.map((q) => q.toJson()).toList();
 
-        debugPrint("Saving exercise and questions to SQLite: Title = $_title, Questions = ${questionData.length}");
+        debugPrint(
+            "Saving exercise and questions to SQLite: Title = $_title, Questions = ${questionData.length}");
         await DatabaseHelper.saveDownloadedExercise({
           'exerciseId': widget.exerciseId,
           'title': _title,
@@ -157,24 +160,23 @@ class _HomeScreenDetailOnlineState extends State<HomeScreenDetailOnline> with Ti
           setState(() {
             _isDownloaded = true;
           });
-          // Show compact animated gradient SnackBar
-          _snackAnimationController.forward(from: 0); // Trigger animation
+          _snackAnimationController.forward(from: 0);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              duration: const Duration(seconds: 4), // Reduced duration for compactness
-              backgroundColor: Colors.transparent, // Transparent to show gradient
+              duration: const Duration(seconds: 4),
+              backgroundColor: Colors.transparent,
               content: FadeTransition(
                 opacity: _snackAnimation,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12), // Reduced padding
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8), // Smaller radius
+                    borderRadius: BorderRadius.circular(8),
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: Theme.of(context).brightness == Brightness.dark
-                          ? [Colors.blueGrey[900]!, Colors.blueGrey[700]!] // Dark mode
-                          : [Colors.blue[100]!, Colors.blue[300]!], // Light mode
+                          ? [Colors.blueGrey[900]!, Colors.blueGrey[700]!]
+                          : [Colors.blue[100]!, Colors.blue[300]!],
                     ),
                     boxShadow: [
                       BoxShadow(
@@ -185,13 +187,13 @@ class _HomeScreenDetailOnlineState extends State<HomeScreenDetailOnline> with Ti
                     ],
                   ),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min, // Ensures content fits tightly
+                    mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         "Download successful!",
                         style: TextStyle(
-                          fontSize: 14, // Smaller font size
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).brightness == Brightness.dark
                               ? Colors.white
@@ -203,22 +205,17 @@ class _HomeScreenDetailOnlineState extends State<HomeScreenDetailOnline> with Ti
                         onPressed: () {
                           Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(
-                                builder: (context) => const DownloadedExercisesWidget()),
+                            MaterialPageRoute(builder: (context) => const DownloadedExercisesWidget()),
                           );
                         },
                         style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Smaller padding
-                          minimumSize: Size.zero, // Removes default minimum size
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap, // Shrinks to content
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         child: Text(
                           "View Downloads",
-                          style: TextStyle(
-                            fontSize: 12, // Smaller font size
-                            color: Colors.blue,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: TextStyle(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
@@ -233,9 +230,7 @@ class _HomeScreenDetailOnlineState extends State<HomeScreenDetailOnline> with Ti
         debugPrint("Error downloading exercise: $e");
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text("Error downloading exercise: $e"),
-                backgroundColor: Colors.red),
+            SnackBar(content: Text("Error downloading exercise: $e"), backgroundColor: Colors.red),
           );
         }
       }
@@ -244,11 +239,11 @@ class _HomeScreenDetailOnlineState extends State<HomeScreenDetailOnline> with Ti
     }
   }
 
-  Future<void> _forkExercise() async {
+  void _forkExercise() async {
     if (_isCreatedByCurrentUser == true) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("You cannot fork your own exercise."),
+          content: Text("❌ You cannot fork your own exercise."),
           backgroundColor: Colors.red,
         ),
       );
@@ -283,19 +278,96 @@ class _HomeScreenDetailOnlineState extends State<HomeScreenDetailOnline> with Ti
         setState(() {
           _isForked = true;
         });
+
+        // 🔥 Show Fork Success Notification + Navigate to "My Exercises Screen"
+        _snackAnimationController.forward(from: 0);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 4),
+            backgroundColor: Colors.transparent,
+            content: FadeTransition(
+              opacity: _snackAnimation,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: Theme.of(context).brightness == Brightness.dark
+                        ? [Colors.blueGrey[900]!, Colors.blueGrey[700]!]
+                        : [Colors.green[100]!, Colors.green[300]!],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      offset: const Offset(0, 2),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Forked Successfully!",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const MyExercisesPage(),
+                          ),
+                        );
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        "Go to My Exercises",
+                        style: TextStyle(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text("Error forking exercise: $e"),
-              backgroundColor: Colors.red),
+          SnackBar(content: Text("❌ Error Forking Exercise: $e"), backgroundColor: Colors.red),
         );
       }
     }
   }
 
   void _confirmStartExam() {
+    if (!_isForked && (_isCreatedByCurrentUser != true)) {
+      // Only show the message if the exercise is not forked and not created by the current user
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("You must fork this exercise before starting."),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     showCupertinoDialog(
       context: context,
       builder: (context) => CupertinoAlertDialog(
@@ -323,9 +395,7 @@ class _HomeScreenDetailOnlineState extends State<HomeScreenDetailOnline> with Ti
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ExerciseOnlinePage(
-          exerciseNumber: widget.exerciseId,
-        ),
+        builder: (context) => ExerciseOnlinePage(exerciseNumber: widget.exerciseId),
       ),
     );
   }
@@ -337,8 +407,7 @@ class _HomeScreenDetailOnlineState extends State<HomeScreenDetailOnline> with Ti
     return Scaffold(
       backgroundColor: isDarkMode ? Colors.black : Colors.white,
       appBar: AppBar(
-        title: Text(_title,
-            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black)),
+        title: Text(_title, style: TextStyle(color: isDarkMode ? Colors.white : Colors.black)),
         backgroundColor: isDarkMode ? Colors.black : Colors.white,
         foregroundColor: isDarkMode ? Colors.white : Colors.black,
         elevation: 2,
@@ -349,24 +418,20 @@ class _HomeScreenDetailOnlineState extends State<HomeScreenDetailOnline> with Ti
                 : [
                     IconButton(
                       icon: Icon(
-                        _isForked ? Icons.star : Icons.fork_right,
-                        color: _isForked
-                            ? const Color.fromARGB(255, 52, 163, 46)
-                            : Colors.blue,
+                        _isForked ? Icons.check_circle : Icons.fork_right,
+                        color: _isForked ? const Color.fromARGB(255, 52, 163, 46) : Colors.blue,
                       ),
                       onPressed: _isForked ? null : _forkExercise,
-                      tooltip: 'Fork Exercise',
+                      tooltip: _isForked ? 'Forked' : 'Fork Exercise',
                     ),
                     if (!_isDownloaded)
                       IconButton(
                         icon: Icon(
-                          _isDownloaded
-                              ? Icons.check_circle
-                              : Icons.cloud_download,
+                          _isDownloaded ? Icons.check_circle : Icons.cloud_download,
                           color: _isDownloaded ? Colors.green : Colors.blue,
                         ),
                         onPressed: _downloadExercise,
-                        tooltip: 'Download Exercise',
+                        tooltip: _isDownloaded ? 'Downloaded' : 'Download Exercise',
                       ),
                   ],
       ),
@@ -376,16 +441,12 @@ class _HomeScreenDetailOnlineState extends State<HomeScreenDetailOnline> with Ti
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  // Animated Card with Gradient
                   FadeTransition(
                     opacity: _cardAnimation,
                     child: Card(
-                      elevation: 8, // Increased elevation for shadow
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                            20), // Larger radius for modern look
-                      ),
-                      color: Colors.transparent, // Transparent to show gradient
+                      elevation: 8,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      color: Colors.transparent,
                       child: Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(20),
@@ -393,68 +454,37 @@ class _HomeScreenDetailOnlineState extends State<HomeScreenDetailOnline> with Ti
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: isDarkMode
-                                ? [
-                                    Colors.blueGrey[900]!,
-                                    Colors.blueGrey[700]!
-                                  ] // Dark mode gradient
-                                : [
-                                    Colors.blue[100]!,
-                                    Colors.blue[300]!
-                                  ], // Light mode gradient
+                                ? [Colors.blueGrey[900]!, Colors.blueGrey[700]!]
+                                : [Colors.blue[100]!, Colors.blue[300]!],
                           ),
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.all(
-                              20.0), // Increased padding for breathing room
+                          padding: const EdgeInsets.all(20.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 _title,
                                 style: TextStyle(
-                                  fontSize: 24, // Larger title for emphasis
+                                  fontSize: 24,
                                   fontWeight: FontWeight.bold,
-                                  color: isDarkMode
-                                      ? Colors.white
-                                      : Colors.black87,
-                                  shadows: [
-                                    Shadow(
-                                      color: Colors.black26,
-                                      offset: const Offset(1, 1),
-                                      blurRadius: 2,
-                                    ),
-                                  ],
+                                  color: isDarkMode ? Colors.white : Colors.black87,
+                                  shadows: [Shadow(color: Colors.black26, offset: const Offset(1, 1), blurRadius: 2)],
                                 ),
                               ),
                               const SizedBox(height: 12),
                               Text(
                                 _description,
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: isDarkMode
-                                      ? Colors.white70
-                                      : Colors.black54,
-                                  height: 1.5, // Better line spacing
-                                ),
+                                style: TextStyle(fontSize: 18, color: isDarkMode ? Colors.white70 : Colors.black54, height: 1.5),
                               ),
                               const SizedBox(height: 20),
                               Row(
                                 children: [
-                                  Icon(Icons.question_answer,
-                                      color: isDarkMode
-                                          ? Colors.white60
-                                          : Colors.black54,
-                                      size: 24),
+                                  Icon(Icons.question_answer, color: isDarkMode ? Colors.white60 : Colors.black54, size: 24),
                                   const SizedBox(width: 8),
                                   Text(
                                     "Total Questions: $_questionCount",
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: isDarkMode
-                                          ? Colors.white
-                                          : Colors.black87,
-                                    ),
+                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87),
                                   ),
                                 ],
                               ),
@@ -470,23 +500,12 @@ class _HomeScreenDetailOnlineState extends State<HomeScreenDetailOnline> with Ti
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.orange,
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 16, horizontal: 24), // Larger padding
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(30), // More rounded corners
-                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       ),
-                      icon: const Icon(Icons.play_arrow,
-                          color: Colors.white, size: 24),
-                      label: const Text(
-                        "Start Exam",
-                        style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white),
-                      ),
-                      onPressed: _confirmStartExam,
+                      icon: const Icon(Icons.play_arrow, color: Colors.white, size: 24),
+                      label: const Text("Start Exam", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+                      onPressed: !_isForked && (_isCreatedByCurrentUser != true) ? null : _confirmStartExam, // Enable if forked or created by user
                     ),
                   ),
                 ],

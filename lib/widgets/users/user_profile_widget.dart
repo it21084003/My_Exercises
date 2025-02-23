@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:my_exercises/screens/home/home_screen_detail_online.dart';
-import '../../data/firestore_service.dart'; // Import FirestoreService
+import '../../data/firestore_service.dart';
 
 class UserProfilePage extends StatefulWidget {
   final String uid;
@@ -23,17 +23,16 @@ class UserProfilePage extends StatefulWidget {
 class _UserProfilePageState extends State<UserProfilePage> with TickerProviderStateMixin {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirestoreService _firestoreService = FirestoreService(); // Instance of FirestoreService
+  final FirestoreService _firestoreService = FirestoreService();
 
   String? profileDescription;
   String? profilePictureUrl;
   int followersCount = 0;
   int followingCount = 0;
   List<Map<String, dynamic>> userExercises = [];
-  Set<String> forkedExercises = {}; // Track forked exercises
+  Set<String> forkedExercises = {};
   late bool isFollowing;
 
-  // Animation controller for shake effect
   late AnimationController _animationController;
   late Animation<double> _shakeAnimation;
 
@@ -46,7 +45,6 @@ class _UserProfilePageState extends State<UserProfilePage> with TickerProviderSt
     _fetchExercises();
     _fetchForkedExercises();
 
-    // Initialize animation
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
@@ -122,23 +120,19 @@ class _UserProfilePageState extends State<UserProfilePage> with TickerProviderSt
     try {
       QuerySnapshot exerciseSnapshot = await _firestore
           .collection('exercises')
-          .where('creatorId', isEqualTo: widget.uid) // Filter by user ID
-          .where('shared', isEqualTo: true) // Filter by "shared" field
+          .where('creatorId', isEqualTo: widget.uid)
+          .where('shared', isEqualTo: true)
           .get();
 
       setState(() {
         userExercises = exerciseSnapshot.docs.map((doc) {
           final data = doc.data() as Map<String, dynamic>;
-          final Timestamp? timestamp = data['timestamp'] as Timestamp?; // Cast to Timestamp
-          final dynamic categories = data['categories'] ?? []; // Get categories as dynamic list
+          final Timestamp? timestamp = data['timestamp'] as Timestamp?;
+          final dynamic categories = data['categories'] ?? [];
 
-          // Safely cast categories to List<String>
           List<String> categoriesList = [];
           if (categories is List) {
-            categoriesList = categories.map((item) {
-              if (item is String) return item;
-              return item.toString(); // Convert non-String items to strings
-            }).toList();
+            categoriesList = categories.map((item) => item.toString()).toList();
           }
 
           return {
@@ -148,8 +142,9 @@ class _UserProfilePageState extends State<UserProfilePage> with TickerProviderSt
             'creatorId': data['creatorId'] ?? 'Unknown',
             'creatorUsername': data['creatorUsername'] ?? 'Unknown',
             'shared': data['shared'] ?? false,
-            'timestamp': timestamp, // Store as Timestamp for formatting
-            'categories': categoriesList, // Store as List<String>
+            'timestamp': timestamp,
+            'categories': categoriesList,
+            'downloadedCount': data['downloadedCount'] ?? 0,
           };
         }).toList();
       });
@@ -170,9 +165,7 @@ class _UserProfilePageState extends State<UserProfilePage> with TickerProviderSt
           .get();
 
       setState(() {
-        forkedExercises = forkedSnapshot.docs
-            .map((doc) => doc.id)
-            .toSet(); // Store forked exercise IDs
+        forkedExercises = forkedSnapshot.docs.map((doc) => doc.id).toSet();
       });
     } catch (e) {
       print('Error fetching forked exercises: $e');
@@ -183,10 +176,7 @@ class _UserProfilePageState extends State<UserProfilePage> with TickerProviderSt
     User? currentUser = _auth.currentUser;
     if (currentUser == null) return;
 
-    final followingRef = _firestore
-        .collection('users')
-        .doc(currentUser.uid)
-        .collection('following');
+    final followingRef = _firestore.collection('users').doc(currentUser.uid).collection('following');
     final followersRef = _firestore.collection('users').doc(widget.uid).collection('followers');
 
     try {
@@ -217,35 +207,31 @@ class _UserProfilePageState extends State<UserProfilePage> with TickerProviderSt
       return;
     }
 
-    print("Forking Exercise: ${exercise['title']} (ID: ${exercise['id']})");
-
-    final exerciseRef = _firestore.collection('exercises').doc(exercise['id']);
-    final userForkedRef = _firestore
-        .collection('users')
-        .doc(currentUser.uid)
-        .collection('forkedExercises');
+    final exerciseId = exercise['id'];
+    final exerciseRef = _firestore.collection('exercises').doc(exerciseId);
+    final userForkedRef = _firestore.collection('users').doc(currentUser.uid).collection('forkedExercises');
 
     try {
-      // Check if the exercise is already forked
-      if (forkedExercises.contains(exercise['id'])) {
+      if (forkedExercises.contains(exerciseId)) {
         print("⚠️ Warning: Exercise already forked.");
         return;
       }
 
-      // Optimistically update the UI
       setState(() {
-        forkedExercises.add(exercise['id']);
+        forkedExercises.add(exerciseId);
+        final exerciseIndex = userExercises.indexWhere((e) => e['id'] == exerciseId);
+        if (exerciseIndex != -1) {
+          userExercises[exerciseIndex]['downloadedCount'] = (userExercises[exerciseIndex]['downloadedCount'] ?? 0) + 1;
+        }
       });
 
-      // Update exercise in Firestore (increment download count)
       await exerciseRef.update({
         'forkedBy': FieldValue.arrayUnion([currentUser.uid]),
-        'downloadedCount': FieldValue.increment(1), // Increment downloadedCount
+        'downloadedCount': FieldValue.increment(1),
       });
 
-      // Store forked exercise under user's forked list
-      await userForkedRef.doc(exercise['id']).set({
-        'exerciseId': exercise['id'],
+      await userForkedRef.doc(exerciseId).set({
+        'exerciseId': exerciseId,
         'title': exercise['title'],
         'description': exercise['description'],
         'creatorId': exercise['creatorId'],
@@ -253,17 +239,62 @@ class _UserProfilePageState extends State<UserProfilePage> with TickerProviderSt
         'timestamp': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      // Roll back if there's an error
       setState(() {
-        forkedExercises.remove(exercise['id']);
+        forkedExercises.remove(exerciseId);
+        final exerciseIndex = userExercises.indexWhere((e) => e['id'] == exerciseId);
+        if (exerciseIndex != -1) {
+          userExercises[exerciseIndex]['downloadedCount'] = (userExercises[exerciseIndex]['downloadedCount'] ?? 1) - 1;
+        }
       });
-
       print('❌ Error forking exercise: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Future<void> _unforkExercise(Map<String, dynamic> exercise) async {
+    User? currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      print("Error: No logged-in user.");
+      return;
+    }
+
+    final exerciseId = exercise['id'];
+    final exerciseRef = _firestore.collection('exercises').doc(exerciseId);
+    final userForkedRef = _firestore.collection('users').doc(currentUser.uid).collection('forkedExercises');
+
+    try {
+      if (!forkedExercises.contains(exerciseId)) {
+        print("⚠️ Warning: Exercise not forked.");
+        return;
+      }
+
+      setState(() {
+        forkedExercises.remove(exerciseId);
+        final exerciseIndex = userExercises.indexWhere((e) => e['id'] == exerciseId);
+        if (exerciseIndex != -1) {
+          userExercises[exerciseIndex]['downloadedCount'] = (userExercises[exerciseIndex]['downloadedCount'] ?? 1) - 1;
+        }
+      });
+
+      await exerciseRef.update({
+        'forkedBy': FieldValue.arrayRemove([currentUser.uid]),
+        'downloadedCount': FieldValue.increment(-1),
+      });
+
+      await userForkedRef.doc(exerciseId).delete();
+    } catch (e) {
+      setState(() {
+        forkedExercises.add(exerciseId);
+        final exerciseIndex = userExercises.indexWhere((e) => e['id'] == exerciseId);
+        if (exerciseIndex != -1) {
+          userExercises[exerciseIndex]['downloadedCount'] = (userExercises[exerciseIndex]['downloadedCount'] ?? 0) + 1;
+        }
+      });
+      print('❌ Error unforking exercise: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
       );
     }
   }
@@ -272,19 +303,14 @@ class _UserProfilePageState extends State<UserProfilePage> with TickerProviderSt
     final exerciseId = exercise['id'] as String?;
     if (exerciseId == null || exerciseId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Exercise ID is missing!'),
-          backgroundColor: Colors.red,
-        ),
+        const SnackBar(content: Text('Exercise ID is missing!'), backgroundColor: Colors.red),
       );
       return;
     }
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => HomeScreenDetailOnline(
-          exerciseId: exerciseId,
-        ),
+        builder: (context) => HomeScreenDetailOnline(exerciseId: exerciseId),
       ),
     );
   }
@@ -298,19 +324,16 @@ class _UserProfilePageState extends State<UserProfilePage> with TickerProviderSt
       appBar: AppBar(
         title: Text(widget.username),
         backgroundColor: isDarkMode ? Colors.grey[900] : const Color.fromRGBO(253, 247, 254, 1),
-        foregroundColor: isDarkMode ? Colors.white : Colors.black, // Ensure text visibility
-        elevation: 0, // Remove shadow to blend with background
+        foregroundColor: isDarkMode ? Colors.white : Colors.black,
+        elevation: 0,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Profile Section (unchanged, keeping colors and design)
             Card(
               elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
@@ -318,33 +341,17 @@ class _UserProfilePageState extends State<UserProfilePage> with TickerProviderSt
                     CircleAvatar(
                       radius: 40,
                       backgroundColor: Colors.blue,
-                      backgroundImage: profilePictureUrl != null
-                          ? NetworkImage(profilePictureUrl!)
-                          : null,
-                      child: profilePictureUrl == null
-                          ? const Icon(Icons.person, size: 40, color: Colors.white)
-                          : null,
+                      backgroundImage: profilePictureUrl != null ? NetworkImage(profilePictureUrl!) : null,
+                      child: profilePictureUrl == null ? const Icon(Icons.person, size: 40, color: Colors.white) : null,
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            widget.username,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          Text(widget.username, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 8),
-                          Text(
-                            profileDescription ?? 'No description available',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                          ),
+                          Text(profileDescription ?? 'No description available', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
                           const SizedBox(height: 8),
                           Row(
                             children: [
@@ -360,108 +367,70 @@ class _UserProfilePageState extends State<UserProfilePage> with TickerProviderSt
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // Follow Button (unchanged, keeping colors and design)
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 40),
                 backgroundColor: isFollowing ? Colors.red : Colors.blue,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
               ),
               onPressed: _toggleFollow,
-              child: Text(
-                isFollowing ? 'Unfollow' : 'Follow',
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
+              child: Text(isFollowing ? 'Unfollow' : 'Follow', style: const TextStyle(color: Colors.white, fontSize: 16)),
             ),
-
             const SizedBox(height: 20),
-
-            // User's Exercises
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    "Exercises",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.white : Colors.black,
-                    ),
-                  ),
+                  Text("Exercises", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black)),
                   const SizedBox(height: 10),
                   Expanded(
                     child: userExercises.isEmpty
-                        ?  Center(
-                            child: Text(
-                              "No exercises available",
-                              style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.grey),
-                            ),
-                          )
+                        ? Center(child: Text("No exercises available", style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.grey)))
                         : ListView.builder(
                             itemCount: userExercises.length,
                             itemBuilder: (context, index) {
                               final exercise = userExercises[index];
                               final isForked = forkedExercises.contains(exercise['id']);
-                              final Timestamp? timestamp = exercise['timestamp'] as Timestamp?; // Cast to Timestamp
-                              final String timeAgo = timestamp != null
-                                  ? _firestoreService.formatShortTimeAgo(timestamp.toDate())
-                                  : "Unknown"; // Use FirestoreService's public method
+                              final Timestamp? timestamp = exercise['timestamp'] as Timestamp?;
+                              final String timeAgo = timestamp != null ? _firestoreService.formatShortTimeAgo(timestamp.toDate()) : "Unknown";
 
                               return Card(
-                                elevation: 4, // Match HomeScreen elevation
-                                margin: const EdgeInsets.symmetric(vertical: 8.0), // Match HomeScreen margin
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16), // Match HomeScreen rounded corners
-                                ),
-                                color: isDarkMode ? Colors.grey[900] : Colors.white, // Match HomeScreen card color
+                                elevation: 4,
+                                margin: const EdgeInsets.symmetric(vertical: 8.0),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                color: isDarkMode ? Colors.grey[900] : Colors.white,
                                 child: Padding(
-                                  padding: const EdgeInsets.all(1), // Match HomeScreen padding
+                                  padding: const EdgeInsets.all(1),
                                   child: ListTile(
                                     title: Text(
                                       exercise['title'],
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: isDarkMode ? Colors.white : Colors.black,
-                                      ),
+                                      style: TextStyle(fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black),
                                     ),
                                     subtitle: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           exercise['description'],
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: isDarkMode ? Colors.white70 : Colors.black87,
-                                          ),
+                                          style: TextStyle(fontSize: 14, color: isDarkMode ? Colors.white70 : Colors.black87),
                                         ),
                                         const SizedBox(height: 6),
-                                        // Category Tags (if available, add similar to HomeScreen)
                                         if (exercise['categories'] != null && exercise['categories'] is List)
                                           Wrap(
                                             spacing: 6,
                                             runSpacing: 4,
                                             children: (exercise['categories'] as List).map((item) {
-                                              String category = item.toString(); // Ensure item is a String
+                                              String category = item.toString();
                                               return Container(
                                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.blue.withOpacity(0.15), // Match HomeScreen
-                                                  borderRadius: BorderRadius.circular(16), // Match HomeScreen
-                                                  border: Border.all(color: Colors.blue, width: 1), // Match HomeScreen
+                                                  color: Colors.blue.withOpacity(0.15),
+                                                  borderRadius: BorderRadius.circular(16),
+                                                  border: Border.all(color: Colors.blue, width: 1),
                                                 ),
                                                 child: Text(
                                                   category,
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.blue, // Match HomeScreen
-                                                  ),
+                                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue),
                                                 ),
                                               );
                                             }).toList(),
@@ -472,19 +441,16 @@ class _UserProfilePageState extends State<UserProfilePage> with TickerProviderSt
                                             Expanded(
                                               child: Row(
                                                 children: [
-                                                  const Icon(Icons.download, size: 18, color: Colors.blue), // Match HomeScreen
+                                                  const Icon(Icons.download, size: 18, color: Colors.blue),
                                                   const SizedBox(width: 5),
                                                   Text(
                                                     _formatDownloadCount(exercise['downloadedCount'] ?? 0),
-                                                    style: const TextStyle(fontSize: 14, color: Colors.blue), // Match HomeScreen
+                                                    style: const TextStyle(fontSize: 14, color: Colors.blue),
                                                   ),
                                                   const SizedBox(width: 15),
                                                   Text(
-                                                    timeAgo, // Use formatted timestamp
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      color: isDarkMode ? Colors.white70 : Colors.grey,
-                                                    ),
+                                                    timeAgo,
+                                                    style: TextStyle(fontSize: 14, color: isDarkMode ? Colors.white70 : Colors.grey),
                                                   ),
                                                 ],
                                               ),
@@ -497,25 +463,20 @@ class _UserProfilePageState extends State<UserProfilePage> with TickerProviderSt
                                       animation: _shakeAnimation,
                                       builder: (context, child) {
                                         return Transform.translate(
-                                          offset: Offset(
-                                            !isForked ? _shakeAnimation.value : 0,
-                                            0,
-                                          ),
+                                          offset: Offset(!isForked ? _shakeAnimation.value : 0, 0),
                                           child: IconButton(
                                             icon: Icon(
-                                              isForked ? Icons.check_circle : Icons.fork_right,
-                                              color: isForked ? Colors.green : Colors.blue,
+                                              isForked ? Icons.remove_circle_outline : Icons.fork_right,
+                                              color: isForked ? Colors.red : Colors.blue,
                                             ),
                                             onPressed: isForked
-                                                ? null
+                                                ? () => _unforkExercise(exercise)
                                                 : () => _forkExercise(exercise),
                                           ),
                                         );
                                       },
                                     ),
-                                    onTap: isForked
-                                        ? () => _showExerciseDetails(exercise)
-                                        : _triggerShake,
+                                    //onTap: () => _showExerciseDetails(exercise),
                                   ),
                                 ),
                               );
@@ -555,12 +516,12 @@ class ExerciseDetailsPage extends StatelessWidget {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDarkMode ? Colors.grey[900] : const Color(0xFFF5E6E6), // Match other screens
+      backgroundColor: isDarkMode ? Colors.grey[900] : const Color(0xFFF5E6E6),
       appBar: AppBar(
         title: Text(title),
-        backgroundColor: isDarkMode ? Colors.grey[900] : const Color(0xFFF5E6E6), // Match Scaffold background
-        foregroundColor: isDarkMode ? Colors.white : Colors.black, // Ensure text visibility
-        elevation: 0, // Remove shadow to blend with background
+        backgroundColor: isDarkMode ? Colors.grey[900] : const Color(0xFFF5E6E6),
+        foregroundColor: isDarkMode ? Colors.white : Colors.black,
+        elevation: 0,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -569,21 +530,13 @@ class ExerciseDetailsPage extends StatelessWidget {
           children: [
             Text(
               title,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: isDarkMode ? Colors.white : Colors.black, // Match other screens
-              ),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black),
             ),
             const SizedBox(height: 10),
             Text(
               description,
-              style: TextStyle(
-                fontSize: 16,
-                color: isDarkMode ? Colors.white70 : Colors.black87, // Match other screens
-              ),
+              style: TextStyle(fontSize: 16, color: isDarkMode ? Colors.white70 : Colors.black87),
             ),
-            // Additional details for the exercise can be added here
           ],
         ),
       ),
