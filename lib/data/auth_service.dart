@@ -16,7 +16,7 @@ class AuthService {
   // Getter to get the currently logged-in user
   User? get currentUser => _auth.currentUser;
 
-  /// **🔹 Google Sign-In & Save User to Firestore**
+  /// **🔹 Google Sign-In & Link or Save User to Firestore**
   Future<User?> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -28,8 +28,38 @@ class AuthService {
         idToken: googleAuth.idToken,
       );
 
-      UserCredential userCredential = await _auth.signInWithCredential(credential);
-      User? user = userCredential.user;
+      UserCredential userCredential;
+      User? user;
+
+      // Check if the email is already registered with Firebase Authentication
+      final String email = googleUser.email;
+      final List<String> signInMethods = await _auth.fetchSignInMethodsForEmail(email);
+
+      if (signInMethods.isNotEmpty) {
+        // Email already exists, attempt to link the Google credential to the existing account
+        User? existingUser = _auth.currentUser;
+        if (existingUser == null || existingUser.email != email) {
+          // Sign in with the existing email/password first (if possible, or handle manually)
+          // For now, we’ll sign in directly with Google and handle linking later if needed
+          userCredential = await _auth.signInWithCredential(credential);
+          user = userCredential.user;
+        } else {
+          // Link the Google credential to the existing user
+          try {
+            userCredential = await existingUser.linkWithCredential(credential);
+            user = userCredential.user;
+          } catch (e) {
+            print("❌ Error linking Google account: $e");
+            // If linking fails, sign in directly (but preserve data)
+            userCredential = await _auth.signInWithCredential(credential);
+            user = userCredential.user;
+          }
+        }
+      } else {
+        // Email doesn’t exist, create a new user with Google
+        userCredential = await _auth.signInWithCredential(credential);
+        user = userCredential.user;
+      }
 
       if (user != null) {
         // Check if user exists in Firestore
@@ -46,6 +76,17 @@ class AuthService {
             'favoriteCategories': [],
             'firstTimeLogin': true, // Mark first login
             'createdAt': FieldValue.serverTimestamp(),
+            'points': 0,
+            'level': 'Beginner',
+            'badges': [],
+            'completed_exercises': [],
+          });
+        } else {
+          // Update Firestore with Google-specific data (e.g., profile picture, display name) if needed,
+          // but preserve existing data like username, exercises, and password
+          await _firestore.collection('users').doc(user.uid).update({
+            'profilePicture': FieldValue.arrayUnion([user.photoURL ?? userDoc['profilePicture']]),
+            'username': userDoc['username'] ?? user.displayName ?? 'New User', // Preserve existing username
           });
         }
         return user;
@@ -57,38 +98,59 @@ class AuthService {
     }
   }
 
- // auth_service.dart
-Future<bool> register(String email, String password, String userName) async {
-  try {
-    UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-    User? user = userCredential.user;
+  // Register User & Save to Firestore
+  Future<String?> register(String email, String password, String userName) async {
+    try {
+      // ✅ First, validate the email format before sending to Firebase
+      if (!_isValidEmail(email)) {
+        return 'Invalid email format. Please enter a valid email.';
+      }
 
-    if (user != null) {
-      await _firestore.collection('users').doc(user.uid).set({
-        'uid': user.uid,
-        'email': email,
-        'username': userName,
-        'description': 'No description available',
-        'profilePicture': '',
-        'favoriteCategories': [],
-        'firstTimeLogin': true,
-        'createdAt': FieldValue.serverTimestamp(),
-        'points': 0,
-        'level': 'Beginner',
-        'badges': [],
-        'completed_exercises': [], // New field for tracking completed exercises
-      });
-      return true;
+      // ✅ Proceed with Firebase Authentication (this will throw if email exists)
+      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      User? user = userCredential.user;
+
+      if (user != null) {
+        await _firestore.collection('users').doc(user.uid).set({
+          'uid': user.uid,
+          'email': email,
+          'username': userName,
+          'description': 'No description available',
+          'profilePicture': '',
+          'favoriteCategories': [],
+          'firstTimeLogin': true,
+          'createdAt': FieldValue.serverTimestamp(),
+          'points': 0,
+          'level': 'Beginner',
+          'badges': [],
+          'completed_exercises': [],
+        });
+        return null; // ✅ No error (successful registration)
+      }
+      return 'Registration failed. Please try again.';
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {
+        return 'Email already exists. Please use a different email or log in.';
+      } else if (e.code == 'invalid-email') {
+        return 'Invalid email format. Please enter a valid email address.';
+      } else if (e.code == 'weak-password') {
+        return 'Password is too weak. Please use at least 6 characters.';
+      } else {
+        return 'Registration failed. Please try again: ${e.message}';
+      }
+    } catch (e) {
+      return 'Registration failed. Please try again: $e';
     }
-    return false;
-  } catch (e) {
-    print('❌ Registration Error: $e');
-    return false;
   }
-}
+
+  // ✅ Helper function to validate email format before Firebase request
+  bool _isValidEmail(String email) {
+    return RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").hasMatch(email);
+  }
 
   // Login User & Check First-Time Login
   Future<bool?> login(String email, String password) async {
@@ -161,6 +223,37 @@ Future<bool> register(String email, String password, String userName) async {
       print("✅ User Logged Out Successfully");
     } catch (e) {
       print('❌ Error during logout: $e');
+    }
+  }
+
+  /// **🔹 Link Google Account to Existing Email/Password Account**
+  Future<User?> linkGoogleToExistingAccount(String email, String password) async {
+    try {
+      // Sign in with email/password to get the existing user
+      UserCredential emailCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      User? existingUser = emailCredential.user;
+
+      if (existingUser == null) return null;
+
+      // Sign in with Google to get the Google credential
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return null;
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final AuthCredential googleCredential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Link the Google credential to the existing user
+      await existingUser.linkWithCredential(googleCredential);
+      return existingUser;
+    } catch (e) {
+      print("❌ Error linking Google account: $e");
+      return null;
     }
   }
 }

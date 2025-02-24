@@ -73,7 +73,7 @@ class _ResetPasswordWidgetState extends State<ResetPasswordWidget> {
       body: SafeArea(
         child: Stack(
           children: [
-            Padding(
+            SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -164,9 +164,16 @@ class _ResetPasswordWidgetState extends State<ResetPasswordWidget> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 16), // Add extra padding at the bottom to prevent overflow
                 ],
               ),
             ),
+            // 📌 **Loading Indicator**
+            if (_isLoading)
+              Container(
+                color: Colors.black.withOpacity(0.3),
+                child: const Center(child: CupertinoActivityIndicator(radius: 15)),
+              ),
           ],
         ),
       ),

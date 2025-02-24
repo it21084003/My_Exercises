@@ -401,6 +401,10 @@ class _HomeScreenState extends State<HomeScreen> {
     String creatorUsername = exercise["creatorUsername"] ?? "Unknown";
     String timeAgo = exercise["timestamp"] ?? "Unknown";
 
+    // Get the current user
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final isCurrentUserCreator = currentUser != null && exercise['creatorId'] == currentUser.uid;
+
     return Card(
       elevation: 4,
       margin: const EdgeInsets.symmetric(vertical: 8.0),
@@ -493,16 +497,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       // Username (Right, starting from middle)
                       Expanded(
                         child: Align(
-                          alignment:
-                              Alignment.centerRight, // Move to the right side
+                          alignment: Alignment.centerRight,
                           child: Text(
-                            "By: $creatorUsername",
+                            isCurrentUserCreator ? "You" : " $creatorUsername",
                             style: TextStyle(
                               fontSize: 14,
                               color: isDarkMode ? Colors.white70 : Colors.grey,
+                              fontWeight: isCurrentUserCreator ? FontWeight.bold : FontWeight.normal, // Bold for "You"
+                              fontStyle: isCurrentUserCreator ? FontStyle.italic : FontStyle.normal, // Italic for "You" (optional)
                             ),
-                            overflow:
-                                TextOverflow.ellipsis, // ✅ Cuts long names
+                            overflow: TextOverflow.ellipsis, // ✅ Cuts long names
                             maxLines: 1,
                           ),
                         ),

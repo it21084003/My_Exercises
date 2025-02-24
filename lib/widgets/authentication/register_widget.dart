@@ -10,7 +10,8 @@ class RegisterWidget extends StatefulWidget {
   RegisterWidgetState createState() => RegisterWidgetState();
 }
 
-class RegisterWidgetState extends State<RegisterWidget> with TickerProviderStateMixin {
+class RegisterWidgetState extends State<RegisterWidget>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -30,7 +31,8 @@ class RegisterWidgetState extends State<RegisterWidget> with TickerProviderState
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    _snackAnimation = CurvedAnimation(parent: _snackAnimationController, curve: Curves.easeIn);
+    _snackAnimation = CurvedAnimation(
+        parent: _snackAnimationController, curve: Curves.easeIn);
   }
 
   @override
@@ -41,99 +43,86 @@ class RegisterWidgetState extends State<RegisterWidget> with TickerProviderState
     _snackAnimationController.dispose();
     super.dispose();
   }
+Future<void> _register() async {
+  if (_formKey.currentState!.validate() && _isTermsAccepted) {
+    setState(() {
+      _isLoading = true;
+    });
 
-  Future<void> _register() async {
-    if (_formKey.currentState!.validate() && _isTermsAccepted) {
+    String email = _emailController.text.trim();
+    String password = _passwordController.text.trim();
+    String name = _nameController.text.trim();
+
+    // ✅ Ensure email format is correct before calling Firebase
+    if (!_isValidEmail(email)) {
       setState(() {
-        _isLoading = true;
+        _isLoading = false;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Invalid email format. Please enter a valid email.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
-      try {
-        bool success = await _authService.register(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-          _nameController.text.trim(),
-        );
+    String? errorMessage = await _authService.register(email, password, name);
 
-        if (!mounted) return;
+    if (!mounted) return;
 
-        setState(() {
-          _isLoading = false;
-        });
+    setState(() {
+      _isLoading = false;
+    });
 
-        if (success) {
-          if (mounted) {
-            _snackAnimationController.forward(from: 0);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                duration: const Duration(seconds: 4),
-                backgroundColor: Colors.transparent,
-                content: FadeTransition(
-                  opacity: _snackAnimation,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: Theme.of(context).brightness == Brightness.dark
-                            ? [Colors.blueGrey[900]!, Colors.blueGrey[700]!]
-                            : [Colors.green[100]!, Colors.green[300]!],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black26,
-                          offset: const Offset(0, 2),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          "Registration successful!",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-            debugPrint("Registration successful, showing compact animated SnackBar");
-          }
-
-          // ✅ Registration successful → Navigate to Login Page
-          Navigator.pushReplacementNamed(context, '/login');
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Registration failed. Please try again.')),
-          );
-        }
-      } catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
+    if (errorMessage == null) {
+      _showSnackBar("Registration successful!", Colors.green);
+      Navigator.pushReplacementNamed(context, '/login', arguments: email);
+    } else {
+      _showSnackBar(errorMessage, Colors.red);
     }
   }
+}
 
-  void _navigateToTermsPage() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const TermsAndPrivacyPolicyPage()),
-    );
+bool _isValidEmail(String email) {
+    return RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").hasMatch(email);
   }
+
+// ✅ Utility function to show SnackBar messages
+void _showSnackBar(String message, Color color) {
+  _snackAnimationController.forward(from: 0);
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      duration: const Duration(seconds: 4),
+      backgroundColor: Colors.transparent,
+      content: FadeTransition(
+        opacity: _snackAnimation,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: color,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                message,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+  void _navigateToTermsPage() {}
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +131,8 @@ class RegisterWidgetState extends State<RegisterWidget> with TickerProviderState
         child: Stack(
           children: [
             SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -150,12 +140,16 @@ class RegisterWidgetState extends State<RegisterWidget> with TickerProviderState
                   const CircleAvatar(
                     radius: 50,
                     backgroundColor: Colors.blue,
-                    child: Icon(Icons.app_registration, size: 50, color: Colors.white),
+                    child: Icon(Icons.app_registration,
+                        size: 50, color: Colors.white),
                   ),
                   const SizedBox(height: 16),
                   const Text(
                     "My Exercises",
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue),
+                    style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue),
                   ),
                   const SizedBox(height: 16),
                   const Text(
@@ -174,7 +168,10 @@ class RegisterWidgetState extends State<RegisterWidget> with TickerProviderState
                           controller: _nameController,
                           label: "Name",
                           icon: Icons.person_outline,
-                          validator: (value) => value == null || value.trim().isEmpty ? 'Please enter your name' : null,
+                          validator: (value) =>
+                              value == null || value.trim().isEmpty
+                                  ? 'Please enter your name'
+                                  : null,
                         ),
                         const SizedBox(height: 16),
                         _buildInputField(
@@ -184,7 +181,9 @@ class RegisterWidgetState extends State<RegisterWidget> with TickerProviderState
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
                               return 'Please enter your email';
-                            } else if (!RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").hasMatch(value)) {
+                            } else if (!RegExp(
+                                    r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+                                .hasMatch(value)) {
                               return 'Please enter a valid email';
                             }
                             return null;
@@ -215,7 +214,8 @@ class RegisterWidgetState extends State<RegisterWidget> with TickerProviderState
                     children: [
                       Checkbox(
                         value: _isTermsAccepted,
-                        onChanged: (value) => setState(() => _isTermsAccepted = value ?? false),
+                        onChanged: (value) =>
+                            setState(() => _isTermsAccepted = value ?? false),
                       ),
                       Expanded(
                         child: GestureDetector(
@@ -226,12 +226,16 @@ class RegisterWidgetState extends State<RegisterWidget> with TickerProviderState
                               children: [
                                 TextSpan(
                                   text: 'Terms of Service',
-                                  style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                      color: Colors.blue,
+                                      fontWeight: FontWeight.bold),
                                 ),
                                 TextSpan(text: ' and '),
                                 TextSpan(
                                   text: 'Privacy Policy',
-                                  style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                      color: Colors.blue,
+                                      fontWeight: FontWeight.bold),
                                 ),
                                 TextSpan(text: '.'),
                               ],
@@ -250,11 +254,15 @@ class RegisterWidgetState extends State<RegisterWidget> with TickerProviderState
                     height: 50,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30)),
                         backgroundColor: Colors.blue,
                       ),
-                      onPressed: _isTermsAccepted && !_isLoading ? _register : null,
-                      child: const Text('Sign Up', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      onPressed:
+                          _isTermsAccepted && !_isLoading ? _register : null,
+                      child: const Text('Sign Up',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -266,7 +274,10 @@ class RegisterWidgetState extends State<RegisterWidget> with TickerProviderState
                       const Text("Already have an account? "),
                       GestureDetector(
                         onTap: () => Navigator.pushNamed(context, '/login'),
-                        child: const Text('Login', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                        child: const Text('Login',
+                            style: TextStyle(
+                                color: Colors.blue,
+                                fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -278,7 +289,8 @@ class RegisterWidgetState extends State<RegisterWidget> with TickerProviderState
             if (_isLoading)
               Container(
                 color: Colors.black.withOpacity(0.3),
-                child: const Center(child: CupertinoActivityIndicator(radius: 15)),
+                child:
+                    const Center(child: CupertinoActivityIndicator(radius: 15)),
               ),
           ],
         ),

@@ -18,37 +18,59 @@ class LoginWidgetState extends State<LoginWidget> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _linkPasswordController = TextEditingController(); // For linking accounts
   final AuthService _authService = AuthService();
 
   String? _emailError;
   String? _passwordError;
   bool _isLoading = false;
+  bool _showLinkPasswordDialog = false; // Track if we need to show password prompt
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Check if an email was passed as a route argument (e.g., after registration)
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is String) {
+      _emailController.text = args; // Pre-fill email from registration
+    }
+  }
 
   Future<void> _login() async {
+    // ✅ Ensure validation runs first before setting loading state
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _emailError = null;
       _passwordError = null;
     });
 
-    if (_formKey.currentState!.validate()) {
-      bool? isFirstTime = await _authService.login(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-      );
+    bool? isFirstTime = await _authService.login(
+      _emailController.text.trim(),
+      _passwordController.text.trim(),
+    );
 
-      if (!mounted) return;
-      setState(() => _isLoading = false);
+    if (!mounted) return;
 
-      if (isFirstTime == null) {
-        setState(() {
-          _emailError = 'Invalid email or password';
-          _passwordError = 'Invalid email or password';
-        });
-      } else {
-        // ✅ Navigate to correct page based on first-time login status
-        _navigateAfterLogin(isFirstTime);
-      }
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (isFirstTime == null) {
+      setState(() {
+        _emailError = 'Invalid email or password';
+        _passwordError = 'Invalid email or password';
+      });
+    } else {
+      _navigateAfterLogin(isFirstTime);
     }
   }
 
@@ -59,14 +81,104 @@ class LoginWidgetState extends State<LoginWidget> {
     if (!mounted) return;
 
     if (user != null) {
-      // 🚀 Fetch user Firestore data
-      DocumentSnapshot userDoc =
-          await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      bool isFirstTime = userDoc.exists ? userDoc['firstTimeLogin'] ?? true : true;
+      final String googleEmail = user.email ?? ''; // Use the email from Google sign-in
+      if (googleEmail.isEmpty) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Google sign-in failed. No email provided.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
 
-      _navigateAfterLogin(isFirstTime);
+      // Check if the email is already registered with email/password
+      try {
+        final List<String> signInMethods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(googleEmail);
+        if (signInMethods.isNotEmpty && signInMethods.contains('password')) {
+          // Prompt user for password to link accounts
+          _showLinkPasswordDialog = true;
+          _linkPasswordController.clear();
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Link Google Account'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Enter your password to link your Google account to this email.'),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _linkPasswordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Password',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) => value == null || value.isEmpty ? 'Please enter your password' : null,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    setState(() => _isLoading = true);
+                    User? linkedUser = await _authService.linkGoogleToExistingAccount(googleEmail, _linkPasswordController.text.trim());
+                    if (linkedUser != null) {
+                      // Fetch user Firestore data
+                      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(linkedUser.uid).get();
+                      bool isFirstTime = userDoc.exists ? userDoc['firstTimeLogin'] ?? true : true;
+                      _navigateAfterLogin(isFirstTime);
+                    } else {
+                      setState(() {
+                        _isLoading = false;
+                        _showLinkPasswordDialog = false;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Failed to link accounts. Please check your password.'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Link'),
+                ),
+              ],
+            ),
+          );
+        } else {
+          // No existing email/password account, proceed normally
+          DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+          bool isFirstTime = userDoc.exists ? userDoc['firstTimeLogin'] ?? true : true;
+          _navigateAfterLogin(isFirstTime);
+        }
+      } catch (e) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error checking email: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } else {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _showLinkPasswordDialog = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Google sign-in failed. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -164,7 +276,7 @@ class LoginWidgetState extends State<LoginWidget> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 44),
 
                   // 📌 **Login Button**
                   SizedBox(
@@ -182,30 +294,26 @@ class LoginWidgetState extends State<LoginWidget> {
                   const SizedBox(height: 16),
 
                   // 📌 **Social Media Login**
-                  const Text("or continue with", style: TextStyle(fontSize: 16, color: Colors.grey)),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.facebook, color: Colors.blue),
-                        onPressed: () {},
-                      ),
-                      IconButton(
-                        icon: Image.asset(
-                          'assets/ios_neutral_rd_na@4x.png',
-                          height: 30,
-                          width: 30,
-                        ),
-                        onPressed: _loginWithGoogle,
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.apple, color: Colors.black),
-                        onPressed: () {},
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
+                  // const Text("or continue with", style: TextStyle(fontSize: 16, color: Colors.grey)),
+                  // const SizedBox(height: 16),
+                  // Row(
+                  //   mainAxisAlignment: MainAxisAlignment.center,
+                  //   children: [
+                  //     IconButton(
+                  //       icon: const Icon(Icons.facebook, color: Colors.blue),
+                  //       onPressed: () {},
+                  //     ),
+                  //     IconButton(
+                  //       icon: Image.asset(
+                  //         'assets/google_logo.png',
+                  //         height: 30,
+                  //         width: 30,
+                  //       ),
+                  //       onPressed: _loginWithGoogle,
+                  //     ),
+                  //   ],
+                  // ),
+                  // const SizedBox(height: 24),
 
                   // 📌 **Sign Up & Forgot Password**
                   Row(

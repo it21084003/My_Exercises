@@ -7,12 +7,10 @@ class DownloadedExercisesWidget extends StatefulWidget {
   const DownloadedExercisesWidget({super.key});
 
   @override
-  State<DownloadedExercisesWidget> createState() =>
-      _DownloadedExercisesWidgetState();
+  State<DownloadedExercisesWidget> createState() => _DownloadedExercisesWidgetState();
 }
 
-class _DownloadedExercisesWidgetState extends State<DownloadedExercisesWidget>
-    with TickerProviderStateMixin {
+class _DownloadedExercisesWidgetState extends State<DownloadedExercisesWidget> with TickerProviderStateMixin {
   List<Map<String, dynamic>> _downloadedExercises = [];
   bool _isLoading = true;
 
@@ -29,8 +27,7 @@ class _DownloadedExercisesWidgetState extends State<DownloadedExercisesWidget>
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    _snackAnimation = CurvedAnimation(
-        parent: _snackAnimationController, curve: Curves.easeIn);
+    _snackAnimation = CurvedAnimation(parent: _snackAnimationController, curve: Curves.easeIn);
   }
 
   @override
@@ -57,8 +54,9 @@ class _DownloadedExercisesWidgetState extends State<DownloadedExercisesWidget>
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text("Error loading exercises: $e"),
-              backgroundColor: Colors.red),
+            content: Text("Error loading exercises: $e"),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -70,8 +68,7 @@ class _DownloadedExercisesWidgetState extends State<DownloadedExercisesWidget>
       context: context,
       builder: (context) => CupertinoAlertDialog(
         title: const Text("Remove Exercise"),
-        content: const Text(
-            "Are you sure you want to remove this downloaded exercise?"),
+        content: const Text("Are you sure you want to remove this downloaded exercise?"),
         actions: [
           CupertinoDialogAction(
             child: const Text("Cancel"),
@@ -91,8 +88,7 @@ class _DownloadedExercisesWidgetState extends State<DownloadedExercisesWidget>
         final exists = await DatabaseHelper.isDownloaded(exerciseId);
         debugPrint("Exercise exists before deletion: $exists");
         if (!exists) {
-          throw Exception(
-              "Exercise with ID $exerciseId not found in local storage.");
+          throw Exception("Exercise with ID $exerciseId not found in local storage.");
         }
 
         await DatabaseHelper.removeDownloadedExercise(exerciseId);
@@ -114,8 +110,7 @@ class _DownloadedExercisesWidgetState extends State<DownloadedExercisesWidget>
               content: FadeTransition(
                 opacity: _snackAnimation,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     gradient: LinearGradient(
@@ -159,8 +154,9 @@ class _DownloadedExercisesWidgetState extends State<DownloadedExercisesWidget>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text("Error removing exercise: $e"),
-                backgroundColor: Colors.red),
+              content: Text("Error removing exercise: $e"),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       }
@@ -226,9 +222,7 @@ class _DownloadedExercisesWidgetState extends State<DownloadedExercisesWidget>
                               exercise['description'] ?? 'No description.',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: isDarkMode
-                                    ? Colors.white70
-                                    : Colors.black87,
+                                color: isDarkMode ? Colors.white70 : Colors.black87,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -236,9 +230,7 @@ class _DownloadedExercisesWidgetState extends State<DownloadedExercisesWidget>
                               "Total Questions: ${exercise['totalQuestions'] ?? 0}",
                               style: TextStyle(
                                 fontSize: 14,
-                                color: isDarkMode
-                                    ? Colors.white70
-                                    : Colors.black87,
+                                color: isDarkMode ? Colors.white70 : Colors.black87,
                               ),
                             ),
                           ],
@@ -246,16 +238,18 @@ class _DownloadedExercisesWidgetState extends State<DownloadedExercisesWidget>
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _removeDownloadedExercise(
-                                  exercise['exerciseId']),
-                              tooltip: 'Remove Download',
+                            CupertinoButton(
+                              padding: EdgeInsets.zero,
+                              onPressed: () => _removeDownloadedExercise(exercise['exerciseId']),
+                              child: Icon(
+                                CupertinoIcons.trash,
+                                color: Colors.red,
+                                size: 24, // Slightly larger for iOS clarity
+                              ),
                             ),
                           ],
                         ),
-                        onTap: () =>
-                            _navigateToExercise(exercise['exerciseId']),
+                        onTap: () => _navigateToExercise(exercise['exerciseId']),
                       ),
                     );
                   },

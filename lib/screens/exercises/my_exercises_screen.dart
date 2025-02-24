@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:my_exercises/screens/home/home_screen_detail_online.dart';
 import 'package:my_exercises/widgets/exercises/edit_exercise_widget.dart';
 import '../../data/firestore_service.dart';
@@ -128,162 +130,180 @@ class _MyExercisesPageState extends State<MyExercisesPage> {
               ),
               const SizedBox(height: 10),
               Expanded(
-                child: StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: _firestoreService.streamUserExercises(),
-                  builder: (context, snapshot) {
-                    if (_isLoading) {
-                      return const Center(
+                child: _isLoading
+                    ? const Center(
                         child: CupertinoActivityIndicator(radius: 15),
-                      );
-                    }
+                      )
+                    : StreamBuilder<List<Map<String, dynamic>>>(
+                        stream: _firestoreService.streamUserExercises(),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasError) {
+                            return Center(
+                              child: Text(
+                                'Error: ${snapshot.error}',
+                                style: const TextStyle(color: Colors.red),
+                              ),
+                            );
+                          }
 
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Text(
-                          'Error: ${snapshot.error}',
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      );
-                    }
-
-                    final exercises = snapshot.data ?? [];
-                    if (exercises.isEmpty) {
-                      return const Center(
-                        child: Text(
-                          'No exercises found. Create or fork an exercise!',
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
-                        ),
-                      );
-                    }
-
-                    return ListView.builder(
-                      itemCount: exercises.length,
-                      itemBuilder: (context, index) {
-                        final exercise = exercises[index];
-                        final exerciseId = exercise['exerciseId'];
-                        final title = exercise['title'] ?? 'Untitled Exercise';
-                        final description = exercise['description'] ?? 'No description.';
-                        final bool isForked = exercise['isForked'] ?? false;
-                        final originalCreator = exercise['creatorUsername'] ?? '';
-                        final int downloadedCount = exercise['downloadedCount'] ?? 0;
-                        final List<String> exerciseCategories = List<String>.from(exercise["categories"] ?? []);
-
-                        debugPrint("Building card for exercise ${exerciseId}: downloadedCount = $downloadedCount");
-
-                        return Card(
-                          elevation: 4,
-                          margin: const EdgeInsets.symmetric(vertical: 8.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16.0),
-                          ),
-                          color: isDarkMode ? Colors.grey[900] : Colors.white,
-                          child: Padding(
-                            padding: const EdgeInsets.all(1),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ListTile(
-                                  title: Text(
-                                    title,
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: isDarkMode ? Colors.white : Colors.black,
+                          final exercises = snapshot.data ?? _exercises;
+                          if (exercises.isEmpty) {
+                            return Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text(
+                                    'No exercises found.',
+                                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  ElevatedButton.icon(
+                                    onPressed: _navigateToCreateExercise,
+                                    icon: const Icon(Icons.add, color: Colors.white),
+                                    label: const Text(
+                                      'Create an Exercise',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(30),
+                                      ),
                                     ),
                                   ),
-                                  subtitle: Column(
+                                ],
+                              ),
+                            );
+                          }
+
+                          return ListView.builder(
+                            itemCount: exercises.length,
+                            itemBuilder: (context, index) {
+                              final exercise = exercises[index];
+                              final exerciseId = exercise['exerciseId'];
+                              final title = exercise['title'] ?? 'Untitled Exercise';
+                              final description = exercise['description'] ?? 'No description.';
+                              final bool isForked = exercise['isForked'] ?? false;
+                              final originalCreator = exercise['creatorUsername'] ?? '';
+                              final int downloadedCount = exercise['downloadedCount'] ?? 0;
+                              final List<String> exerciseCategories = List<String>.from(exercise["categories"] ?? []);
+
+                              debugPrint("Building card for exercise ${exerciseId}: downloadedCount = $downloadedCount");
+
+                              return Card(
+                                elevation: 4,
+                                margin: const EdgeInsets.symmetric(vertical: 8.0),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16.0),
+                                ),
+                                color: isDarkMode ? Colors.grey[900] : Colors.white,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(1),
+                                  child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        isForked
-                                            ? 'Forked from: $originalCreator'
-                                            : 'Created by you',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: isDarkMode ? Colors.white70 : Colors.black87,
+                                      ListTile(
+                                        title: Text(
+                                          title,
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: isDarkMode ? Colors.white : Colors.black,
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        description,
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: isDarkMode ? Colors.white70 : Colors.black87,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-
-                                      Wrap(
-                                        spacing: 6,
-                                        runSpacing: 4,
-                                        children: exerciseCategories.map((category) {
-                                          return Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 10, vertical: 5),
-                                            decoration: BoxDecoration(
-                                              color: Colors.blue.withOpacity(0.15),
-                                              borderRadius: BorderRadius.circular(16),
-                                              border: Border.all(color: Colors.blue, width: 1),
-                                            ),
-                                            child: Text(
-                                              category,
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.blue,
+                                        subtitle: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              isForked
+                                                  ? 'Forked from: $originalCreator'
+                                                  : 'Created by you',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: isDarkMode ? Colors.white70 : Colors.black87,
                                               ),
                                             ),
-                                          );
-                                        }).toList(),
-                                      ),
-                                      const SizedBox(height: 6),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              description,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: isDarkMode ? Colors.white70 : Colors.black87,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 6),
 
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.download,
-                                              size: 18, color: Colors.blue),
-                                          const SizedBox(width: 5),
-                                          Text(
-                                            _formatDownloadCount(downloadedCount),
-                                            style: const TextStyle(
-                                                fontSize: 14, color: Colors.blue),
-                                          ),
-                                        ],
+                                            Wrap(
+                                              spacing: 6,
+                                              runSpacing: 4,
+                                              children: exerciseCategories.map((category) {
+                                                return Container(
+                                                  padding: const EdgeInsets.symmetric(
+                                                      horizontal: 10, vertical: 5),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.blue.withOpacity(0.15),
+                                                    borderRadius: BorderRadius.circular(16),
+                                                    border: Border.all(color: Colors.blue, width: 1),
+                                                  ),
+                                                  child: Text(
+                                                    category,
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.blue,
+                                                    ),
+                                                  ),
+                                                );
+                                              }).toList(),
+                                            ),
+                                            const SizedBox(height: 6),
+
+                                            Row(
+                                              children: [
+                                                const Icon(Icons.download,
+                                                    size: 18, color: Colors.blue),
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  _formatDownloadCount(downloadedCount),
+                                                  style: const TextStyle(
+                                                      fontSize: 14, color: Colors.blue),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                        trailing: isForked
+                                            ? IconButton(
+                                                icon: const Icon(Icons.remove_circle_outline,
+                                                    color: Colors.red),
+                                                onPressed: () => _unforkExercise(exerciseId!),
+                                              )
+                                            : IconButton(
+                                                icon: const Icon(Icons.edit_note,
+                                                    color: Colors.blue),
+                                                onPressed: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) => EditExerciseWidget(
+                                                        exerciseId: exerciseId,
+                                                        title: title,
+                                                        shared: exercise['shared'],
+                                                      ),
+                                                    ),
+                                                  ).then((_) => _fetchExercises());
+                                                },
+                                              ),
+                                        onTap: () => _navigateToHomeScreenDetail(context, exerciseId),
                                       ),
                                     ],
                                   ),
-                                  trailing: isForked
-                                      ? IconButton(
-                                          icon: const Icon(Icons.remove_circle_outline,
-                                              color: Colors.red),
-                                          onPressed: () => _unforkExercise(exerciseId!),
-                                        )
-                                      : IconButton(
-                                          icon: const Icon(Icons.edit_note,
-                                              color: Colors.blue),
-                                          onPressed: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) => EditExerciseWidget(
-                                                  exerciseId: exerciseId,
-                                                  title: title,
-                                                  shared: exercise['shared'],
-                                                ),
-                                              ),
-                                            ).then((_) => _fetchExercises());
-                                          },
-                                        ),
-                                  onTap: () => _navigateToHomeScreenDetail(context, exerciseId),
                                 ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
               ),
             ],
           ),

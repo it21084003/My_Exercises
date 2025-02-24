@@ -1,3 +1,14 @@
+buildscript {
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.2.1'  // ✅ Ensure AGP is set
+        classpath 'com.google.gms:google-services:4.3.15' // ✅ Firebase Services (if using Firebase)
+    }
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
 allprojects {
     repositories {
         google()
